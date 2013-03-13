@@ -55,12 +55,15 @@ class Item(object):
         self.db_link_key = (self.feed.url + u'|' + feed_item['link']).encode('utf-8')
 
         self.createddate = datetime.datetime.now().strftime('%a, %e %b %Y %T -0000')
-        updated_parsed = feed_item['updated_parsed'][0:6]
+        if 'updated_parsed' in feed_item:
+            updated_parsed = feed_item['updated_parsed'][0:6]
+        else:
+            updated_parsed = None
         try:
             self.createddate = datetime.datetime(*updated_parsed) \
                 .strftime('%a, %e %b %Y %T -0000')
         except TypeError as e:
-            log.warning('Parsing date %s failed: %s' % (updated_parsed, str(e)))
+            pass
 
         self.previous_message_id = None
         self.message_id = '<%s.%s@%s>' % (

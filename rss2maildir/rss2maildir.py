@@ -42,6 +42,11 @@ def main():
         else:
             relative_maildir = settings.get(url, 'maildir_template').replace('{}', name)
 
+        if settings.has_option(url, 'keywords'):
+            keywords = sorted([k.strip() for k in settings.get(url, 'keywords').split(',')])
+        else:
+            keywords = []
+
         maildir = os.path.join(os.path.expanduser(settings['maildir_root']), relative_maildir)
 
         try:
@@ -66,7 +71,8 @@ def main():
         for item in feed.new_items():
             message = item.create_message(
                 include_html_part=settings.getboolean(feed.url, 'include_html_part'),
-                item_filters=item_filters
+                item_filters=item_filters,
+                keywords=keywords
             )
             if item:
                 item.deliver(message, maildir)

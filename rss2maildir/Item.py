@@ -75,7 +75,7 @@ class Item(object):
 
     text_template = u'%(text_content)s\n\nItem URL: %(link)s'
     html_template = u'%(html_content)s\n<p>Item URL: <a href="%(link)s">%(link)s</a></p>'
-    def create_message(self, include_html_part = True, item_filters=None):
+    def create_message(self, include_html_part = True, item_filters=None, keywords=[]):
 
         item = self
         if item_filters:
@@ -96,13 +96,21 @@ class Item(object):
         subj_gen.feed(title.encode('utf-8'))
         message.add_header('Subject', subj_gen.gettext().strip())
 
+        if item.link:
+            message.add_header('X-URL', item.link)
+
         message.add_header('Message-ID', item.message_id)
+
         if item.previous_message_id:
             message.add_header('References', item.previous_message_id)
 
         message.add_header('Date', item.createddate)
+
         message.add_header('X-rss2maildir-rundate',
                        datetime.datetime.now().strftime('%a, %e %b %Y %T -0000'))
+
+        if len(keywords) > 0:
+            message.add_header('X-Keywords', ', '.join(keywords))
 
         textpart = email.MIMEText.MIMEText((item.text_template % item).encode('utf-8'),
                                            'plain', 'utf-8')

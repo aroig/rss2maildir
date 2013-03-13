@@ -26,6 +26,9 @@ import datetime
 from .HTML2Text import HTML2Text
 from .utils import generate_random_string, compute_hash
 
+# Default encoding mode set to Quoted Printable. Acts globally!
+email.Charset.add_charset('utf-8', email.Charset.QP, email.Charset.QP, 'utf-8')
+
 class Item(object):
     def __init__(self, feed, feed_item):
         self.feed = feed
@@ -81,7 +84,7 @@ class Item(object):
                 if not item:
                     return False
 
-                
+
         message = email.MIMEMultipart.MIMEMultipart('alternative')
 
         message.set_unixfrom('%s <rss2maildir@localhost>' % item.feed.url)

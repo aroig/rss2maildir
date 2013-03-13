@@ -56,6 +56,8 @@ def main():
             item_filters = imp.load_source(
                 'item_filters',
                 settings['item_filters']).get_filters()
+        else:
+            item_filters=None
 
         # right - we've got the directories, we've got the url, we know the
         # url... lets play!

@@ -22,7 +22,6 @@ import os
 import email
 import socket
 import datetime
-
 from .HTML2Text import HTML2Text
 from .utils import generate_random_string, compute_hash
 
@@ -75,7 +74,7 @@ class Item(object):
 
     text_template = u'%(text_content)s\n\nItem URL: %(link)s'
     html_template = u'%(html_content)s\n<p>Item URL: <a href="%(link)s">%(link)s</a></p>'
-    def create_message(self, include_html_part = True, item_filters=None, keywords=[]):
+    def create_message(self, feed_name, include_html_part = True, item_filters=None, keywords=[]):
 
         item = self
         if item_filters:
@@ -89,11 +88,12 @@ class Item(object):
 
         message.set_unixfrom('%s <rss2maildir@localhost>' % item.feed.url)
         message.add_header('From', '%s <rss2maildir@localhost>' % item.author)
-        message.add_header('To', '%s <rss2maildir@localhost>' % item.feed.url)
+        # message.add_header('To', '%s <rss2maildir@localhost>' % item.feed.url)
+        message.add_header('To', 'rss2maildir@localhost')
 
         subj_gen = HTML2Text()
         title = item.title.replace(u'<', u'&lt;').replace(u'>', u'&gt;')
-        subj_gen.feed(title.encode('utf-8'))
+        subj_gen.feed(u'[%s] %s' % (feed_name.encode('utf-8'), title.encode('utf-8')))
         message.add_header('Subject', subj_gen.gettext().strip())
 
         if item.link:
@@ -106,11 +106,11 @@ class Item(object):
 
         message.add_header('Date', item.createddate)
 
-        message.add_header('X-rss2maildir-rundate',
-                       datetime.datetime.now().strftime('%a, %e %b %Y %T -0000'))
-
         if len(keywords) > 0:
             message.add_header('X-Keywords', ', '.join(keywords))
+
+        message.add_header('X-rss2maildir-rundate',
+                       datetime.datetime.now().strftime('%a, %e %b %Y %T -0000'))
 
         textpart = email.MIMEText.MIMEText((item.text_template % item).encode('utf-8'),
                                            'plain', 'utf-8')

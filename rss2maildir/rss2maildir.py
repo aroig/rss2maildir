@@ -67,6 +67,7 @@ def main():
         # right - we've got the directories, we've got the url, we know the
         # url... lets play!
 
+        print("Fetching items in '%s'" % name)
         feed = Feed(database, url)
         for item in feed.new_items():
             message = item.create_message(name,

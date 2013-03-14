@@ -42,10 +42,9 @@ def main():
         else:
             relative_maildir = settings.get(url, 'maildir_template').replace('{}', name)
 
+        keywords = []
         if settings.has_option(url, 'keywords'):
             keywords = sorted([k.strip() for k in settings.get(url, 'keywords').split(',')])
-        else:
-            keywords = []
 
         maildir = os.path.join(os.path.expanduser(settings['maildir_root']), relative_maildir)
 
@@ -57,12 +56,12 @@ def main():
             continue
 
         # get item filters
-        if 'item_filters' in settings:
-            item_filters = imp.load_source(
-                'item_filters',
-                settings['item_filters']).get_filters()
-        else:
-            item_filters=None
+        item_filters = None
+        if settings.has_option(url, 'item_filters'):
+            item_filters_code = settings.get(url, 'item_filters')
+            item_filters = imp.load_source('item_filters', item_filters_code).get_filters()
+
+        include_html_part=settings.getboolean(url, 'include_html_part')
 
         # right - we've got the directories, we've got the url, we know the
         # url... lets play!
@@ -71,9 +70,8 @@ def main():
         feed = Feed(database, url)
         for item in feed.new_items():
             message = item.create_message(name,
-                include_html_part=settings.getboolean(feed.url, 'include_html_part'),
+                include_html_part=include_html_part,
                 item_filters=item_filters,
-                keywords=keywords
-            )
+                keywords=keywords)
             if item:
                 item.deliver(message, maildir)

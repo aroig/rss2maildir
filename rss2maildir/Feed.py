@@ -27,10 +27,11 @@ from .utils import open_url, generate_random_string
 log = logging.getLogger('rss2maildir:Feed')
 
 class Feed(object):
-    def __init__(self, database, url, name):
+    def __init__(self, database, url, name, keywords=[]):
         self.database = database
         self.url = url
         self.name = name
+        self.keywords = set(keywords)
 
     def is_changed(self):
         try:

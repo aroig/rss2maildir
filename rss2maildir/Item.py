@@ -35,6 +35,7 @@ class Item(object):
         self.author = feed_item.get('author', None)
         self.title = feed_item['title']
         self.link = feed_item['link']
+        self.keywords = set(self.feed.keywords)
 
         if feed_item.has_key('content'):
             self.content = feed_item['content'][0]['value']
@@ -77,7 +78,7 @@ class Item(object):
 
     text_template = u'%(text_content)s\n\nItem URL: %(link)s'
     html_template = u'%(html_content)s\n<p>Item URL: <a href="%(link)s">%(link)s</a></p>'
-    def create_message(self, include_html_part = True, item_filters=None, keywords=[]):
+    def create_message(self, include_html_part = True, item_filters=None):
 
         item = self
         if item_filters:
@@ -113,8 +114,8 @@ class Item(object):
 
         message.add_header('Date', item.createddate)
 
-        if len(keywords) > 0:
-            message.add_header('X-Keywords', ', '.join(keywords))
+        if len(item.keywords) > 0:
+            message.add_header('X-Keywords', ', '.join(sorted(item.keywords)))
 
         message.add_header('X-rss2maildir-rundate',
                        datetime.datetime.now().strftime('%a, %e %b %Y %T -0000'))

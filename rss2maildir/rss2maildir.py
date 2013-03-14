@@ -83,5 +83,5 @@ def main(opts, args):
             message = item.create_message(
                 include_html_part=include_html_part,
                 item_filters=item_filters)
-            if item:
+            if message:
                 item.deliver(message, maildir)

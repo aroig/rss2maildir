@@ -33,17 +33,14 @@ class Item(object):
         self.feed = feed
 
         self.author = feed_item.get('author', None)
-        self.title = feed_item['title']
-        self.link = feed_item['link']
+        self.title = feed_item.get('title', None)
+        self.link = feed_item.get('link', None)
         self.keywords = set(self.feed.keywords)
 
         if feed_item.has_key('content'):
             self.content = feed_item['content'][0]['value']
         else:
-            if feed_item.has_key('description'):
-                self.content = feed_item['description']
-            else:
-                self.content = u''
+            self.content = feed_item.get('description', u'')
 
         self.md5sum = compute_hash(self.content.encode('utf-8'))
 
@@ -100,7 +97,10 @@ class Item(object):
         message.add_header('To', 'rss2maildir@localhost')
 
         subj_gen = HTML2Text()
-        title = item.title.replace(u'<', u'&lt;').replace(u'>', u'&gt;')
+        if item.title:
+            title = item.title.replace(u'<', u'&lt;').replace(u'>', u'&gt;')
+        else:
+            title = item.feed.name
         subj_gen.feed(title.encode('utf-8'))
         message.add_header('Subject', subj_gen.gettext().strip())
 

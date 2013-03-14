@@ -23,12 +23,23 @@ import imp
 
 from .Database import Database
 from .Feed import Feed
-from .Settings import settings
+from .Settings import FeedConfig
 from .utils import make_maildir
 
 log = logging.getLogger('rss2maildir')
 
-def main():
+loglevels = {
+    0: logging.WARNING,
+    1: logging.INFO,
+    2: logging.DEBUG,
+}
+
+
+def main(opts, args):
+    cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
+    settings = FeedConfig(cfgdir)
+    logging.basicConfig(level = loglevels[min(2, opts.verbosity)])
+
     database = Database(os.path.expanduser(settings['state_dir']))
 
     for url in settings.feeds():

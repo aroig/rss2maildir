@@ -18,15 +18,37 @@
 
 import os
 import ConfigParser
+import imp
 
-class FeedConfigParser(ConfigParser.SafeConfigParser):
-    def __init__(self,
-                 common_section_name = 'common',
-                 general_section_name = 'general',
-                 *args, **kwargs):
-        ConfigParser.SafeConfigParser.__init__(self, *args, **kwargs)
-        self.common_section_name = common_section_name
-        self.general_section_name = general_section_name
+
+class FeedConfig(ConfigParser.SafeConfigParser):
+    def __init__(self, cfgdir):
+        self.cfg_path = os.path.join(cfgdir, 'rss2maildir.conf')
+        self.filters_path = os.path.join(cfgdir, 'filters.py')
+
+        ConfigParser.SafeConfigParser.__init__(self)
+        self.read([os.path.expanduser(self.cfg_path)])
+
+        self.filters = self._load_filters()
+
+        self.common_section_name = 'common'
+        self.general_section_name = 'general'
+
+    def _load_filters(self):
+        try:
+            fd = open(self.filters_path, 'r')
+            rawcode = fd.read()
+        except:
+            ui.print_error("Can't open filters at %s" % self.filters_path)
+            return
+
+        try:
+            filters = imp.new_module('filters')
+            exec(rawcode, filters.__dict__)
+            return filters
+        except Exception as err:
+            ui.print_error("Exception loading filters %s\n%s" % (self.filters_path, str(err)))
+            return
 
     def get(self, section, key, *args, **kwargs):
         for location in (section, self.common_section_name):
@@ -48,6 +70,3 @@ class FeedConfigParser(ConfigParser.SafeConfigParser):
     def feeds(self):
         return (section for section in self.sections()
                 if section not in (self.general_section_name, self.common_section_name))
-
-settings = FeedConfigParser()
-settings.readfp(open(os.path.join(os.path.dirname(__file__), 'defaults', 'rss2maildir.conf')))

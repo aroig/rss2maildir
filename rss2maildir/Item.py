@@ -18,6 +18,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
 import os
 import email
 import socket
@@ -36,6 +37,10 @@ class Item(object):
         self.title = feed_item.get('title', None)
         self.link = feed_item.get('link', None)
         self.keywords = set(self.feed.keywords)
+
+        # get rid of newlines in the title
+        if self.title:
+            self.title = re.sub('\s', ' ', self.title.strip())
 
         if feed_item.has_key('content'):
             self.content = feed_item['content'][0]['value']

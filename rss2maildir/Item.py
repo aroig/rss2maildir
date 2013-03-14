@@ -119,14 +119,14 @@ class Item(object):
         message.add_header('X-rss2maildir-rundate',
                        datetime.datetime.now().strftime('%a, %e %b %Y %T -0000'))
 
-        textpart = email.MIMEText.MIMEText((item.text_template % item).encode('utf-8'), 'plain', 'utf-8')
         message.set_default_type('text/plain')
-        message.attach(textpart)
 
         if include_html_part:
-            htmlpart = email.MIMEText.MIMEText((item.html_template % item).encode('utf-8'),
-                                               'html', 'utf-8')
+            htmlpart = email.MIMEText.MIMEText((item.html_template % item).encode('utf-8'), 'html', 'utf-8')
             message.attach(htmlpart)
+        else:
+            textpart = email.MIMEText.MIMEText((item.text_template % item).encode('utf-8'), 'plain', 'utf-8')
+            message.attach(textpart)
 
         return message
 

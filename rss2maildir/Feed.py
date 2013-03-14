@@ -32,6 +32,7 @@ class Feed(object):
         self.url = url
         self.name = name
         self.keywords = set(keywords)
+        self.response = None
 
     def is_changed(self):
         try:
@@ -39,13 +40,15 @@ class Feed(object):
         except KeyError as e:
             return True
 
-        response = open_url('HEAD', self.url)
-        if not response:
+        if not self.response:
+            self.response = open_url('GET', self.url)
+
+        if not self.response:
             log.warning('Fetching feed %s failed' % self.name)
             return True
 
         result = False
-        for key, value in response.getheaders():
+        for key, value in self.response.getheaders():
             if previous_data.get(key, None) != value:
                 result = True
                 break
@@ -58,12 +61,14 @@ class Feed(object):
             log.info('Feed %s not changed, skipping' % self.url)
             return
 
-        response = open_url('GET', self.url)
-        if not response:
+        if not self.response:
+            self.response = open_url('GET', self.url)
+
+        if not self.response:
             log.warning('Fetching feed %s failed' % (self.url))
             return
 
-        parsed_feed = feedparser.parse(response)
+        parsed_feed = feedparser.parse(self.response)
         for item in (Item(self, feed_item) for feed_item in parsed_feed['items']):
             if self.database.seen_before(item):
                 log.info('Item %s already seen, skipping' % item.link)
@@ -72,6 +77,6 @@ class Feed(object):
             yield item
             self.database.mark_seen(item)
 
-        data = dict((key, value) for key, value in response.getheaders() if key in self.relevant_headers)
+        data = dict((key, value) for key, value in self.response.getheaders() if key in self.relevant_headers)
         if data:
             self.database.set_feed_metadata(self.url, data)

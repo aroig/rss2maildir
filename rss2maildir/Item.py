@@ -32,7 +32,7 @@ class Item(object):
     def __init__(self, feed, feed_item):
         self.feed = feed
 
-        self.author = feed_item.get('author', self.feed.url)
+        self.author = feed_item.get('author', None)
         self.title = feed_item['title']
         self.link = feed_item['link']
 
@@ -77,7 +77,7 @@ class Item(object):
 
     text_template = u'%(text_content)s\n\nItem URL: %(link)s'
     html_template = u'%(html_content)s\n<p>Item URL: <a href="%(link)s">%(link)s</a></p>'
-    def create_message(self, feed_name, include_html_part = True, item_filters=None, keywords=[]):
+    def create_message(self, include_html_part = True, item_filters=None, keywords=[]):
 
         item = self
         if item_filters:
@@ -94,7 +94,7 @@ class Item(object):
         if item.author:
             message.add_header('From', '%s <rss2maildir@localhost>' % item.author.encode('utf-8'))
         else:
-            message.add_header('From', '%s <rss2maildir@localhost>' % feed_name.encode('utf-8'))
+            message.add_header('From', '%s <rss2maildir@localhost>' % item.feed.name.encode('utf-8'))
 
         message.add_header('To', 'rss2maildir@localhost')
 

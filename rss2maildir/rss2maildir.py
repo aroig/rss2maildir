@@ -67,9 +67,9 @@ def main():
         # url... lets play!
 
         print("Fetching items in '%s'" % name)
-        feed = Feed(database, url)
+        feed = Feed(database, url, name)
         for item in feed.new_items():
-            message = item.create_message(name,
+            message = item.create_message(
                 include_html_part=include_html_part,
                 item_filters=item_filters,
                 keywords=keywords)

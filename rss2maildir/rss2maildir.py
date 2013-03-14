@@ -69,8 +69,8 @@ def main(opts, args):
         # get item filters
         item_filters = None
         if settings.has_option(url, 'item_filters'):
-            item_filters_code = settings.get(url, 'item_filters')
-            item_filters = imp.load_source('item_filters', item_filters_code).get_filters()
+            item_filters_raw = [ft.strip() for ft in settings.get(url, 'item_filters').split(',')]
+            item_filters = [getattr(settings.filters, ft) for ft in item_filters_raw]
 
         include_html_part=settings.getboolean(url, 'include_html_part')
 

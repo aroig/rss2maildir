@@ -38,6 +38,10 @@ loglevels = {
 }
 
 
+# stores exception data from the threads
+exc_info = None
+
+
 def main(opts, args):
     cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
     settings = FeedConfig(cfgdir)
@@ -84,11 +88,19 @@ def main(opts, args):
 
     pool = ThreadPool(num_threads)
     def fetch_feed_closure(f):
-        fetch_feed(f, maildir)
+        try:
+            fetch_feed(f, maildir)
+        # store first exception data to be collected in the main thread
+        except Exception, e:
+            global exc_info
+            import sys
+            if not exc_info: exc_info = sys.exc_info()
 
+    global exc_info
     res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
     while not res.ready():
         res.wait(0)
+        if exc_info: raise exc_info[1], None, exc_info[2]
     pool.terminate()
 
 

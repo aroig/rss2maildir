@@ -39,7 +39,7 @@ class FeedConfig(ConfigParser.SafeConfigParser):
             fd = open(self.filters_path, 'r')
             rawcode = fd.read()
         except:
-            ui.print_error("Can't open filters at %s" % self.filters_path)
+            raise Exception("Can't open filters at %s" % self.filters_path)
             return
 
         try:
@@ -47,8 +47,7 @@ class FeedConfig(ConfigParser.SafeConfigParser):
             exec(rawcode, filters.__dict__)
             return filters
         except Exception as err:
-            ui.print_error("Exception loading filters %s\n%s" % (self.filters_path, str(err)))
-            return
+            raise Exception("Exception loading filters %s\n%s" % (self.filters_path, str(err)))
 
     def get(self, section, key, *args, **kwargs):
         for location in (section, self.common_section_name):

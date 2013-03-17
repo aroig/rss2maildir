@@ -45,7 +45,7 @@ class Maildir(object):
         return '%i.%s.%s.%s' % (os.getpid(),
                                 socket.gethostname(),
                                 item.md5sum,
-                                item.createdate.strftime('%s'))
+                                item.createddate.strftime('%s'))
 
 
     def path2metadata(self, path):

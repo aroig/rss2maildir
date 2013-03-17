@@ -58,14 +58,13 @@ class Item(object):
 
         self.db_link_key = (self.feed.url + u'|' + feed_item['link']).encode('utf-8')
 
-        self.createddate = datetime.datetime.now().strftime('%a, %e %b %Y %T -0000')
+        self.createddate = datetime.datetime.now()
         if 'updated_parsed' in feed_item:
             updated_parsed = feed_item['updated_parsed'][0:6]
         else:
             updated_parsed = None
         try:
-            self.createddate = datetime.datetime(*updated_parsed) \
-                .strftime('%a, %e %b %Y %T -0000')
+            self.createddate = datetime.datetime(*updated_parsed)
         except TypeError as e:
             pass
 
@@ -113,7 +112,7 @@ class Item(object):
         if item.previous_message_id:
             message.add_header('References', item.previous_message_id)
 
-        message.add_header('Date', item.createddate)
+        message.add_header('Date', item.createddate.strftime('%a, %e %b %Y %T -0000'))
 
         if len(item.keywords) > 0:
             message.add_header('X-Keywords', ', '.join(sorted(item.keywords)))

@@ -41,6 +41,7 @@ def main(opts, args):
     settings = FeedConfig(cfgdir)
     logging.basicConfig(level = loglevels[min(2, opts.verbosity)])
 
+    maildir_template = settings['maildir_template']
     maildir = Maildir(settings['maildir_root'])
 
     for url in settings.feeds():
@@ -49,7 +50,7 @@ def main(opts, args):
         if settings.has_option(url, 'name'):
             name = settings.get(url, 'name')
 
-        relative_maildir = settings.get(url, 'maildir_template').replace('{}', name)
+        relative_maildir = maildir_template.replace('{}', name)
         if settings.has_option(url, 'maildir'):
             relative_maildir = settings.get(url, 'maildir')
 

@@ -114,8 +114,8 @@ class Item(object):
 
 
 
-    text_template = u'%(text_content)s\n\nItem URL: %(link)s'
-    html_template = u'%(html_content)s\n<p>Item URL: <a href="%(link)s">%(link)s</a></p>'
+    text_template = u'%(text_content)s\n\nURL: %(link)s'
+    html_template = u'%(html_content)s\n<p>URL: <a href="%(link)s">%(link)s</a></p>'
     def create_message(self, html = True):
         item = self
         message = email.MIMEMultipart.MIMEMultipart('alternative')

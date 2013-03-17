@@ -30,15 +30,18 @@ class Maildir(object):
         self.path = os.path.expanduser(path)
         self.data = {}
         for p in glob.glob('%s/*/*/*' % self.path):
-            m = self.path2metadata(p)
+            self.updatepath(p)
 
-            if not m: continue
-            if m['state'] == 'tmp': continue
 
-            if not m['maildir'] in self.data:
-                self.data[m['maildir']] = {}
-            else:
-                self.data[m['maildir']][m['md5']] = m
+    def updatepath(self, path):
+        m = self.path2metadata(path)
+        if not m: return
+        if m['state'] == 'tmp': return
+
+        if not m['maildir'] in self.data:
+            self.data[m['maildir']] = {}
+        else:
+            self.data[m['maildir']][m['md5']] = m
 
 
     def filename(self, item):
@@ -76,6 +79,7 @@ class Maildir(object):
 
         maildir_full = os.path.join(self.path, maildir)
 
+        # store message in tmp
         tmp_path = os.path.join(maildir_full, 'tmp', file_name)
         handle = open(tmp_path, 'w')
         handle.write(message.as_string())
@@ -83,8 +87,13 @@ class Maildir(object):
 
         # now move it in to the new directory
         new_path = os.path.join(maildir_full, 'new', file_name)
+        if os.path.exists(new_path):
+            os.unlink(new_path)
         os.link(tmp_path, new_path)
         os.unlink(tmp_path)
+
+        # update data dictionary
+        self.updatepath(maildir_full)
 
 
 

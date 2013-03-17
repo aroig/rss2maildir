@@ -28,10 +28,12 @@ from .utils import open_url, generate_random_string
 log = logging.getLogger('rss2maildir:Feed')
 
 class Feed(object):
-    def __init__(self, url, name, maildir, keywords=[]):
+    def __init__(self, url, name, maildir, keywords=[], item_filters=None, html=True):
         self.url = url
         self.name = name
         self.keywords = set(keywords)
+        self.item_filters = item_filters
+        self.html = html
         self.maildir = maildir
         self.response = None
 

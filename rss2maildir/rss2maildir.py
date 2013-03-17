@@ -22,6 +22,8 @@ import urllib
 import logging
 import imp
 
+from multiprocessing.pool import ThreadPool
+
 from .Maildir import Maildir
 from .Feed import Feed
 from .Settings import FeedConfig
@@ -44,6 +46,9 @@ def main(opts, args):
     maildir_template = settings['maildir_template']
     maildir = Maildir(settings['maildir_root'])
 
+    num_threads = int(settings['threads'])
+
+    feed_list = []
     for url in settings.feeds():
         # get config data
         name = urllib.urlencode((('', url), )).split("=")[1]
@@ -74,19 +79,28 @@ def main(opts, args):
         # message format settings
         html = settings.getboolean(url, 'html')
 
-        # right - we've got the directories, we've got the url, we know the
-        # url... lets play!
+        feed = Feed(url, name, relative_maildir, keywords=keywords, item_filters=item_filters, html=html)
+        feed_list.append(feed)
 
-        print("Fetching items in '%s'" % name)
-        feed = Feed(url, name, relative_maildir, keywords=keywords)
-        for item in feed.new_items(maildir):
+    pool = ThreadPool(num_threads)
+    def fetch_feed_closure(f):
+        fetch_feed(f, maildir)
 
-            # apply item filters
-            if item_filters:
-                for item_filter in item_filters:
-                    item = item_filter(item)
-                    if not item: break
-            if not item: break
+    res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
+    while not res.ready():
+        res.wait(0)
+    pool.terminate()
 
-            # deliver item
-            maildir.deliver(item, html=html)
+
+def fetch_feed(feed, maildir):
+    print("fetching items in '%s'" % feed.name)
+    for item in feed.new_items(maildir):
+        # apply item filters
+        if feed.item_filters:
+            for item_filter in feed.item_filters:
+                item = item_filter(item)
+                if not item: break
+        if not item: break
+
+        # deliver item
+        maildir.deliver(item, html=feed.html)

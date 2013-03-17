@@ -27,6 +27,8 @@ import datetime
 from .HTML2Text import HTML2Text
 from .utils import generate_random_string, compute_hash
 
+import htmlentitydefs
+
 # Default encoding mode set to Quoted Printable. Acts globally!
 email.Charset.add_charset('utf-8', email.Charset.QP, email.Charset.QP, 'utf-8')
 
@@ -88,6 +90,30 @@ class Item(object):
         return getattr(self, key)
 
 
+    def unescape_utf8_xml(self, text):
+        def fixup(m):
+            txt = m.group(0)
+            if txt[:2] == "&#":
+                # character reference
+                try:
+                    if txt[:3] == "&#x":
+                        return unichr(int(txt[3:-1], 16))
+                    else:
+                        return unichr(int(txt[2:-1]))
+                except ValueError:
+                    pass
+            else:
+                # named entity
+                try:
+                    txt = unichr(htmlentitydefs.name2codepoint[txt[1:-1]])
+                except KeyError:
+                    pass
+            return txt # leave as is
+
+        return re.sub("&#?[a-zA-Z0-9_]+;", fixup, text, flags=re.UNICODE)
+
+
+
     text_template = u'%(text_content)s\n\nItem URL: %(link)s'
     html_template = u'%(html_content)s\n<p>Item URL: <a href="%(link)s">%(link)s</a></p>'
     def create_message(self, html = True):
@@ -104,13 +130,10 @@ class Item(object):
 
         message.add_header('To', 'rss2maildir@localhost')
 
-        subj_gen = HTML2Text()
-        if item.title:
-            title = item.title.replace(u'<', u'&lt;').replace(u'>', u'&gt;')
-        else:
-            title = item.feed.name
-        subj_gen.feed(title.encode('utf-8'))
-        message.add_header('Subject', subj_gen.gettext().strip())
+        if item.title: title = item.title.replace(u'<', u'&lt;').replace(u'>', u'&gt;')
+        else:          title = item.feed.name
+        title = self.unescape_utf8_xml(title).encode('utf-8')
+        message.add_header('Subject', title)
 
         if item.link:
             message.add_header('X-URL', item.link)

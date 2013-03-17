@@ -75,22 +75,17 @@ class Item(object):
             socket.gethostname()
         )
 
+
     def __getitem__(self, key):
         return getattr(self, key)
 
+
     text_template = u'%(text_content)s\n\nItem URL: %(link)s'
     html_template = u'%(html_content)s\n<p>Item URL: <a href="%(link)s">%(link)s</a></p>'
-    def create_message(self, include_html_part = True, item_filters=None):
-
+    def create_message(self, html = True):
         item = self
-        if item_filters:
-            for item_filter in item_filters:
-                item = item_filter(item)
-                if not item:
-                    return False
-
-
         message = email.MIMEMultipart.MIMEMultipart('alternative')
+
 #       message.set_unixfrom('%s <rss2maildir@localhost>' % item.feed.url)
 #       message.add_header('To', '%s <rss2maildir@localhost>' % item.feed.url)
 
@@ -127,7 +122,7 @@ class Item(object):
 
         message.set_default_type('text/plain')
 
-        if include_html_part:
+        if html:
             htmlpart = email.MIMEText.MIMEText((item.html_template % item).encode('utf-8'), 'html', 'utf-8')
             message.attach(htmlpart)
         else:
@@ -136,32 +131,14 @@ class Item(object):
 
         return message
 
+
     @property
     def text_content(self):
         textparser = HTML2Text()
         textparser.feed(self.content.encode('utf-8'))
         return textparser.gettext()
 
+
     @property
     def html_content(self):
         return self.content
-
-    def deliver(self, message, maildir):
-        # start by working out the filename we should be writting to, we do
-        # this following the normal maildir style rules
-        file_name = '%i.%s.%s.%s' % (
-            os.getpid(),
-            socket.gethostname(),
-            generate_random_string(10),
-            datetime.datetime.now().strftime('%s')
-        )
-
-        tmp_path = os.path.join(maildir, 'tmp', file_name)
-        handle = open(tmp_path, 'w')
-        handle.write(message.as_string())
-        handle.close()
-
-        # now move it in to the new directory
-        new_path = os.path.join(maildir, 'new', file_name)
-        os.link(tmp_path, new_path)
-        os.unlink(tmp_path)

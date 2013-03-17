@@ -27,56 +27,23 @@ from .utils import open_url, generate_random_string
 log = logging.getLogger('rss2maildir:Feed')
 
 class Feed(object):
-    def __init__(self, database, url, name, keywords=[]):
-        self.database = database
+    def __init__(self, url, name, maildir, keywords=[]):
         self.url = url
         self.name = name
         self.keywords = set(keywords)
+        self.maildir = maildir
         self.response = None
 
-    def is_changed(self):
-        try:
-            previous_data = self.database.get_feed_metadata(self.url)
-        except KeyError as e:
-            return True
 
-        if not self.response:
-            self.response = open_url('GET', self.url)
-
-        if not self.response:
-            log.warning('Fetching feed %s failed' % self.name)
-            return True
-
-        result = False
-        for key, value in self.response.getheaders():
-            if previous_data.get(key, None) != value:
-                result = True
-                break
-
-        return result
-
-    relevant_headers = ('content-md5', 'etag', 'last-modified', 'content-length')
-    def new_items(self):
-        if not self.is_changed():
-            log.info('Feed %s not changed, skipping' % self.url)
-            return
-
-        if not self.response:
-            self.response = open_url('GET', self.url)
-
+    def new_items(self, maildir):
+        self.response = open_url('GET', self.url)
         if not self.response:
             log.warning('Fetching feed %s failed' % (self.url))
             return
 
         parsed_feed = feedparser.parse(self.response)
         for item in (Item(self, feed_item) for feed_item in parsed_feed['items']):
-            if self.database.seen_before(item):
+            if maildir.seen(item):
                 log.info('Item %s already seen, skipping' % item.link)
                 continue
-
             yield item
-            self.database.mark_seen(item)
-
-        data = dict((key, value) for key, value in self.response.getheaders() if key in self.relevant_headers)
-        if data:
-            self.database.set_feed_metadata(self.url, data)

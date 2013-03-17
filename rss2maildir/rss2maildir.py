@@ -65,12 +65,12 @@ def main(opts, args):
 
         # load item filters
         item_filters = None
-        if settings.has_option(url, 'item_filters'):
-            item_filters_raw = [ft.strip() for ft in settings.get(url, 'item_filters').split(',')]
+        if settings.has_option(url, 'filters'):
+            item_filters_raw = [ft.strip() for ft in settings.get(url, 'filters').split(',')]
             item_filters = [getattr(settings.filters, ft) for ft in item_filters_raw]
 
         # message format settings
-        html = settings.getboolean(url, 'include_html_part')
+        html = settings.getboolean(url, 'html')
 
         # right - we've got the directories, we've got the url, we know the
         # url... lets play!

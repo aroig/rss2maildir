@@ -4,6 +4,7 @@
 #
 # Copyright (C) 2007  Brett Parker <iDunno@sommitrealweird.co.uk>
 # Copyright (C) 2011  Justus Winter <4winter@informatik.uni-hamburg.de>
+# Copyright (C) 2013  Abdó Roig-Maranges <abdo.roig@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

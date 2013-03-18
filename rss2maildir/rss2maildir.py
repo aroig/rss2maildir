@@ -40,7 +40,7 @@ loglevels = {
 
 # stores exception data from the threads
 exc_info = None
-
+item_count = 0
 
 def main(opts, args):
     cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
@@ -97,22 +97,34 @@ def main(opts, args):
             if not exc_info: exc_info = sys.exc_info()
 
     global exc_info
+    global item_count
+    item_count = 0
     res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
     while not res.ready():
         res.wait(1)
         if exc_info: raise exc_info[1], None, exc_info[2]
     pool.terminate()
+    print("%d items downloaded" % item_count)
 
 
 def fetch_feed(feed, maildir):
     print("fetching items in '%s'" % feed.name)
-    for item in feed.new_items(maildir):
+    count = 0
+    global item_count
+
+    for item in feed.items():
+        if maildir.seen(item): continue
+
         # apply item filters
         if feed.item_filters:
             for item_filter in feed.item_filters:
                 item = item_filter(item)
                 if not item: break
-        if not item: break
+        if not item: continue
 
+        count = count + 1
         # deliver item
         maildir.deliver(item, html=feed.html)
+
+    item_count = item_count + count
+    return count

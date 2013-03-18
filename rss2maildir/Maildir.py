@@ -31,8 +31,20 @@ class Maildir(object):
     def __init__(self, path):
         self.path = os.path.expanduser(path)
         self.data = {}
+
+        # load messages
         for mp in self.messages():
             self.updatepath(mp)
+
+        # clean tmp dirs
+        for md in os.listdir(self.path):
+            p = os.path.join(self.path, md)
+            if os.path.isdir(p):
+                for ms in os.listdir(p):
+                    p = os.path.join(self.path, md, 'tmp', ms)
+                    if os.path.isfile(p):
+                        log.info("Cleaning file in tmp: %s" % p)
+                        os.unlink(p)
 
 
     def messages(self):

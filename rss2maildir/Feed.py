@@ -30,11 +30,11 @@ log = logging.getLogger('rss2maildir:Feed')
 class Feed(object):
     def __init__(self, url, name, maildir, keywords=[], item_filters=None, html=True):
         self.url = url
-        self.name = name
+        self.name = name.strip().encode('utf-8')
         self.keywords = set(keywords)
         self.item_filters = item_filters
         self.html = html
-        self.maildir = maildir
+        self.maildir = maildir.strip().encode('utf-8')
         self.response = None
 
 

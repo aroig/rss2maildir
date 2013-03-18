@@ -99,7 +99,7 @@ def main(opts, args):
     global exc_info
     res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
     while not res.ready():
-        res.wait(0)
+        res.wait(1)
         if exc_info: raise exc_info[1], None, exc_info[2]
     pool.terminate()
 

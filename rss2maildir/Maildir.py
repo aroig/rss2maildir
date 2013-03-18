@@ -21,7 +21,6 @@ import re
 import os
 import socket
 import datetime
-import glob
 import logging
 
 from .utils import make_maildir
@@ -32,8 +31,20 @@ class Maildir(object):
     def __init__(self, path):
         self.path = os.path.expanduser(path)
         self.data = {}
-        for p in glob.glob('%s/*/*/*' % self.path):
-            self.updatepath(p)
+        for mp in self.messages():
+            self.updatepath(mp)
+
+
+    def messages(self):
+        for md in os.listdir(self.path):
+            p = os.path.join(self.path, md)
+            if os.path.isdir(p):
+                for st in ['cur', 'new']:
+                    p = os.path.join(self.path, md, st)
+                    for ms in os.listdir(p):
+                        p = os.path.join(self.path, md, st, ms)
+                        if os.path.isfile(p):
+                            yield p
 
 
     def updatepath(self, path):
@@ -42,7 +53,7 @@ class Maildir(object):
             log.warning("Can't parse filename: %s" % path)
             return
 
-        if m['state'] == 'tmp':
+        if m['state'] == u'tmp':
             log.info("Ignoring file in tmp: %s" % path)
             return
 
@@ -65,11 +76,11 @@ class Maildir(object):
         maildir = os.path.basename(directory)
         m = re.match('^(.*?)\.(.*?)\.(.*?)\.([0-9]*?)(:.*)?$', name)
         if m:
-            return {'md5': m.group(3),
+            return {'md5': m.group(3).encode('utf-8'),
                     'created': datetime.datetime.fromtimestamp(int(m.group(4))),
-                    'maildir': maildir,
-                    'state': state,
-                    'path': path}
+                    'maildir': maildir.encode('utf-8'),
+                    'state': state.encode('utf-8'),
+                    'path': path.encode('utf-8')}
         else:
             return None
 
@@ -101,7 +112,7 @@ class Maildir(object):
         os.unlink(tmp_path)
 
         # update data dictionary
-        self.updatepath(maildir_full)
+        self.updatepath(new_path)
 
 
 

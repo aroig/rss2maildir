@@ -90,6 +90,17 @@ class Item(object):
         return getattr(self, key)
 
 
+    def __str__(self):
+        ret = ""
+        ret = ret + "Title: %s\n" % self.title
+        ret = ret + "Author: %s\n" % self.author
+        ret = ret + "Keywords: %s\n" % ', '.join(self.keywords)
+        ret = ret + "MD5: %s\n" % self.md5sum
+        ret = ret + "URL: %s\n" % self.link
+        ret = ret + "Content:\n%s\n" % self.content
+        return ret
+
+
     def unescape_utf8_xml(self, text):
         def fixup(m):
             txt = m.group(0)

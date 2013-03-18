@@ -38,14 +38,19 @@ class Feed(object):
         self.response = None
 
 
-    def new_items(self, maildir):
+    def items(self):
         self.response = open_url('GET', self.url)
         if not self.response:
             log.warning('Fetching feed %s failed' % (self.url))
             return
 
         parsed_feed = feedparser.parse(self.response)
-        for item in (Item(self, feed_item) for feed_item in parsed_feed['items']):
+        for feed_item in parsed_feed['items']:
+            yield Item(self, feed_item)
+
+
+    def new_items(self, maildir):
+        for item in self.items():
             if maildir.seen(item):
                 log.info('Item %s already seen, skipping' % item.link)
                 continue

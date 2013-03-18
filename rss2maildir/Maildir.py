@@ -22,8 +22,11 @@ import os
 import socket
 import datetime
 import glob
+import logging
 
 from .utils import make_maildir
+
+log = logging.getLogger('rss2maildir:Maildir')
 
 class Maildir(object):
     def __init__(self, path):
@@ -35,13 +38,18 @@ class Maildir(object):
 
     def updatepath(self, path):
         m = self.path2metadata(path)
-        if not m: return
-        if m['state'] == 'tmp': return
+        if not m:
+            log.warning("Can't parse filename: %s" % path)
+            return
 
-        if not m['maildir'] in self.data:
-            self.data[m['maildir']] = {}
-        else:
-            self.data[m['maildir']][m['md5']] = m
+        if m['state'] == 'tmp':
+            log.info("Ignoring file in tmp: %s" % path)
+            return
+
+        maildir = m['maildir']
+        md5 = m['md5']
+        if not maildir in self.data: self.data[maildir] = {}
+        else:             self.data[maildir][md5] = m
 
 
     def filename(self, item):

@@ -21,6 +21,7 @@ import os
 import urllib
 import logging
 import imp
+import sys
 
 from multiprocessing.pool import ThreadPool
 

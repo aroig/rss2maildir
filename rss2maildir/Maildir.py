@@ -68,7 +68,7 @@ class Maildir(object):
         maildir = m['maildir']
         md5 = m['md5']
         if not maildir in self.data: self.data[maildir] = {}
-        else:             self.data[maildir][md5] = m
+        self.data[maildir][md5] = m
 
 
     def filename(self, item):

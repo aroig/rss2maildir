@@ -65,10 +65,6 @@ class Maildir(object):
             log.warning("Can't parse filename: %s" % path)
             return
 
-        if m['state'] == u'tmp':
-            log.info("Ignoring file in tmp: %s" % path)
-            return
-
         maildir = m['maildir']
         md5 = m['md5']
         if not maildir in self.data: self.data[maildir] = {}
@@ -87,6 +83,7 @@ class Maildir(object):
         directory, state = os.path.split(directory)
         maildir = os.path.basename(directory)
         m = re.match('^(.*?)\.(.*?)\.(.*?)\.([0-9]*?)(:.*)?$', name)
+
         if m:
             return {'md5': m.group(3).encode('utf-8'),
                     'created': datetime.datetime.fromtimestamp(int(m.group(4))),

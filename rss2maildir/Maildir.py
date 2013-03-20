@@ -138,6 +138,8 @@ class Maildir(object):
         """Check whether this item contains new content"""
         md = item.feed.maildir
         md5id = item.md5id
-        return not (self.seen(item) and \
-                    item.createddate <= self.data[md][md5id]['created'] and \
-                    item.md5sum != self.data[md][md5id]['md5sum'])
+        if self.seen(item):
+            return item.createddate > self.data[md][md5id]['created'] and \
+              item.md5sum != self.data[md][md5id]['md5sum']
+        else:
+            return True

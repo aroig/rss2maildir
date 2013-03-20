@@ -114,7 +114,7 @@ def fetch_feed(feed, maildir):
     global item_count
 
     for item in feed.items():
-        if maildir.seen(item): continue
+        if not maildir.new(item): continue
 
         # apply item filters
         if feed.item_filters:

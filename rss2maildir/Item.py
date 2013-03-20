@@ -51,17 +51,14 @@ class Item(object):
             self.content = feed_item.get('description', u'')
 
         self.md5sum = compute_hash(self.content.encode('utf-8'))
-
         self.guid = feed_item.get('guid', None)
-        if self.guid:
-            self.db_guid_key = (self.feed.url + u'|' + self.guid).encode('utf-8')
-        else:
-            self.db_guid_key = None
 
-        self.db_link_key = (self.feed.url + u'|' + feed_item['link']).encode('utf-8')
+        hashstr = ''
+        if self.guid: hashstr = hashstr + self.guid.encode('utf-8')
+        if self.title: hashstr = hashstr + self.title.encode('utf-8')
+        self.md5id = compute_hash(hashstr)
 
         self.createddate = datetime.datetime.now()
-
         try:
             self.createddate = datetime.datetime(*(feed_item['created_parsed'][0:6]))
         except Exception as e:
@@ -96,6 +93,7 @@ class Item(object):
         ret = ret + "Author: %s\n" % self.author
         ret = ret + "Keywords: %s\n" % ', '.join(self.keywords)
         ret = ret + "MD5: %s\n" % self.md5sum
+        ret = ret + "GUID: %s\n" % self.guid
         ret = ret + "URL: %s\n" % self.link
         ret = ret + "Content:\n%s\n" % self.content
         return ret

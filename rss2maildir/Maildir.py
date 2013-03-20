@@ -65,28 +65,30 @@ class Maildir(object):
             log.warning("Can't parse filename: %s" % path)
             return
 
-        maildir = m['maildir']
-        md5 = m['md5']
-        if not maildir in self.data: self.data[maildir] = {}
-        self.data[maildir][md5] = m
+        md = m['maildir']
+        md5id = m['md5id']
+        if not md in self.data: self.data[md] = {}
+        self.data[md][md5id] = m
 
 
     def filename(self, item):
-        return '%i.%s.%s.%s' % (os.getpid(),
-                                socket.gethostname(),
-                                item.md5sum,
-                                item.createddate.strftime('%s'))
+        return '%i.%s.%s.%s.%s' % (os.getpid(),
+                                   socket.gethostname(),
+                                   item.md5id,
+                                   item.md5sum,
+                                   item.createddate.strftime('%s'))
 
 
     def path2metadata(self, path):
         directory, name = os.path.split(path)
         directory, state = os.path.split(directory)
         maildir = os.path.basename(directory)
-        m = re.match('^(.*?)\.(.*?)\.(.*?)\.([0-9]*?)(:.*)?$', name)
+        m = re.match('^(.*?)\.(.*?)\.(.*?)\.(.*?)\.([0-9]*?)(:.*)?$', name)
 
         if m:
-            return {'md5': m.group(3).encode('utf-8'),
-                    'created': datetime.datetime.fromtimestamp(int(m.group(4))),
+            return {'md5id': m.group(3).encode('utf-8'),
+                    'md5sum': m.group(4).encode('utf-8'),
+                    'created': datetime.datetime.fromtimestamp(int(m.group(5))),
                     'maildir': maildir.encode('utf-8'),
                     'state': state.encode('utf-8'),
                     'path': path.encode('utf-8')}
@@ -126,5 +128,16 @@ class Maildir(object):
 
 
     def seen(self, item):
-        maildir = item.feed.maildir
-        return maildir in self.data and item.md5sum in self.data[maildir]
+        """Check wether this item has been seen before"""
+        md = item.feed.maildir
+        md5id = item.md5id
+        return md in self.data and md5id in self.data[md]
+
+
+    def new(self, item):
+        """Check whether this item contains new content"""
+        md = item.feed.maildir
+        md5id = item.md5id
+        return not (self.seen(item) and \
+                    item.createddate <= self.data[md][md5id]['created'] and \
+                    item.md5sum != self.data[md][md5id]['md5sum'])

@@ -58,7 +58,7 @@ class Item(object):
         if self.title: hashstr = hashstr + self.title.encode('utf-8')
         self.md5id = compute_hash(hashstr)
 
-        self.createddate = datetime.datetime.now()
+        self.createddate = self.feed.updateddate
         try:
             self.createddate = datetime.datetime(*(feed_item['created_parsed'][0:6]))
         except Exception as e:

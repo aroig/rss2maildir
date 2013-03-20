@@ -21,6 +21,7 @@
 
 import logging
 import feedparser
+import datetime
 
 from .Item import Item
 from .utils import open_url, generate_random_string
@@ -45,6 +46,18 @@ class Feed(object):
             return
 
         parsed_feed = feedparser.parse(self.response)
+
+        self.updateddate = datetime.datetime.now()
+        try:
+            self.updateddate = datetime.datetime(*(parsed_feed['feed']['published_parsed'][0:6]))
+        except Exception as e:
+            pass
+
+        try:
+            self.updateddate = datetime.datetime(*(parsed_feed['feed']['updated_parsed'][0:6]))
+        except Exception as e:
+            pass
+
         for feed_item in parsed_feed['items']:
             yield Item(self, feed_item)
 

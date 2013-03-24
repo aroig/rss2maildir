@@ -51,12 +51,14 @@ class Item(object):
             self.content = feed_item.get('description', u'')
 
         self.md5sum = compute_hash(self.content.encode('utf-8'))
-        self.guid = feed_item.get('guid', None)
+        self.id = feed_item.get('id', None)
 
-        hashstr = ''
-        if self.guid: hashstr = hashstr + self.guid.encode('utf-8')
-        if self.title: hashstr = hashstr + self.title.encode('utf-8')
-        self.md5id = compute_hash(hashstr)
+        if self.id:      self.md5id = compute_hash(self.id.strip().encode('utf-8'))
+        elif self.title: self.md5id = compute_hash(self.title.strip().encode('utf-8'))
+        else:            self.md5id = None
+
+        tags = feed_item.get('tags', [])
+        self.categories = set([c['term'].strip() for c in tags if c['term']])
 
         self.createddate = self.feed.updateddate
         try:
@@ -88,15 +90,15 @@ class Item(object):
 
 
     def __str__(self):
-        ret = ""
-        ret = ret + "Title: %s\n" % self.title
-        ret = ret + "Author: %s\n" % self.author
-        ret = ret + "Keywords: %s\n" % ', '.join(self.keywords)
-        ret = ret + "MD5: %s\n" % self.md5sum
-        ret = ret + "GUID: %s\n" % self.guid
-        ret = ret + "URL: %s\n" % self.link
-        ret = ret + "Content:\n%s\n" % self.content
-        return ret
+        ret = u""
+        ret = ret + u"Title: %s\n" % self.title
+        ret = ret + u"Author: %s\n" % self.author
+        ret = ret + u"Keywords: %s\n" % ', '.join(self.keywords)
+        ret = ret + u"MD5: %s\n" % self.md5sum
+        ret = ret + u"ID: %s\n" % self.id
+        ret = ret + u"URL: %s\n" % self.link
+        ret = ret + u"Content:\n%s\n" % self.content
+        return ret.encode('utf-8')
 
 
     def unescape_utf8_xml(self, text):
@@ -154,8 +156,9 @@ class Item(object):
 
         message.add_header('Date', item.createddate.strftime('%a, %e %b %Y %T -0000'))
 
-        if len(item.keywords) > 0:
-            message.add_header('X-Keywords', ', '.join(sorted(item.keywords)))
+        message.add_header('X-RSS-ID', item.id)
+        message.add_header('X-RSS-Categories', ', '.join(sorted(item.categories)))
+        message.add_header('X-Keywords', ', '.join(sorted(item.keywords)))
 
         message.add_header('X-rss2maildir-rundate',
                        datetime.datetime.now().strftime('%a, %e %b %Y %T -0000'))

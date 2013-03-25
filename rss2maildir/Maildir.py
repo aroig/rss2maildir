@@ -86,12 +86,12 @@ class Maildir(object):
         m = re.match('^(.*?)\.(.*?)\.(.*?)\.(.*?)\.([0-9]*?)(:.*)?$', name)
 
         if m:
-            return {'md5id': m.group(3).encode('utf-8'),
-                    'md5sum': m.group(4).encode('utf-8'),
+            return {'md5id': m.group(3),
+                    'md5sum': m.group(4),
                     'created': datetime.datetime.fromtimestamp(int(m.group(5))),
-                    'maildir': maildir.encode('utf-8'),
-                    'state': state.encode('utf-8'),
-                    'path': path.encode('utf-8')}
+                    'maildir': maildir,
+                    'state': state,
+                    'path': path}
         else:
             return None
 

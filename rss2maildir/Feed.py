@@ -31,11 +31,11 @@ log = logging.getLogger('rss2maildir:Feed')
 class Feed(object):
     def __init__(self, url, name, maildir, keywords=[], item_filters=None, html=True):
         self.url = url
-        self.name = name.strip().encode('utf-8')
+        self.name = name.strip()
         self.keywords = set(keywords)
         self.item_filters = item_filters
         self.html = html
-        self.maildir = maildir.strip().encode('utf-8')
+        self.maildir = maildir.strip()
         self.response = None
 
 
@@ -45,7 +45,11 @@ class Feed(object):
             log.warning('Fetching feed %s failed' % (self.url))
             return
 
-        parsed_feed = feedparser.parse(self.response)
+        try:
+            parsed_feed = feedparser.parse(self.response)
+        except Exception as e:
+            log.warning('Parsing feed %s failed' % (self.url))
+            return
 
         self.updateddate = datetime.datetime.now()
         try:

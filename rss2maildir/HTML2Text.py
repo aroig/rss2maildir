@@ -17,7 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import textwrap
-from HTMLParser import HTMLParser
+import sys
+
+from html.parser import HTMLParser
 
 class HTML2Text(HTMLParser):
     '''

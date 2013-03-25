@@ -17,16 +17,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import ConfigParser
+from configparser import SafeConfigParser
 import imp
 
 
-class FeedConfig(ConfigParser.SafeConfigParser):
+class FeedConfig(SafeConfigParser):
     def __init__(self, cfgdir):
         self.cfg_path = os.path.join(cfgdir, 'rss2maildir.conf')
         self.filters_path = os.path.join(cfgdir, 'filters.py')
 
-        ConfigParser.SafeConfigParser.__init__(self)
+        super(FeedConfig, self).__init__()
         self.read([os.path.expanduser(self.cfg_path)])
 
         self.filters = self._load_filters()
@@ -52,7 +52,7 @@ class FeedConfig(ConfigParser.SafeConfigParser):
     def get(self, section, key, *args, **kwargs):
         for location in (section, self.common_section_name):
             if self.has_option(location, key):
-                return ConfigParser.SafeConfigParser.get(self, location, key, *args, **kwargs)
+                return SafeConfigParser.get(self, location, key, *args, **kwargs)
 
         raise KeyError('Neither section %s nor %s contained the option %s' %
                        (section, self.common_section_name, key))
@@ -61,7 +61,7 @@ class FeedConfig(ConfigParser.SafeConfigParser):
         return self.has_option(self.general_section_name, key)
 
     def __getitem__(self, key):
-        return ConfigParser.SafeConfigParser.get(self, self.general_section_name, key)
+        return SafeConfigParser.get(self, self.general_section_name, key)
 
     def __setitem__(self, key, value):
         self.set(self.general_section_name, key, value)

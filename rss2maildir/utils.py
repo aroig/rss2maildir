@@ -25,13 +25,11 @@ import random
 import socket
 import string
 import urllib
-import httplib
 import logging
 
-if sys.version_info[0] == 2 and sys.version_info[1] >= 6:
-    import hashlib as md5
-else:
-    import md5
+import hashlib as md5
+import http.client as httplib
+
 
 def mkdir_p(path):
     try:
@@ -47,14 +45,14 @@ def make_maildir(path):
                     for subdir in ('cur', 'tmp', 'new')):
         mkdir_p(dirname)
 
-def open_url(method, url, max_redirects = 3, redirect_on_status = (301, 302, 303, 307)):
+def open_url(method, url, max_redirects = 6, redirect_on_status = (301, 302, 303, 307)):
     log = logging.getLogger('%s %s' % (method, url))
 
     redirectcount = 0
     while redirectcount < max_redirects:
-        (type_, rest) = urllib.splittype(url)
-        (host, path) = urllib.splithost(rest)
-        (host, port) = urllib.splitport(host)
+        (type_, rest) = urllib.parse.splittype(url)
+        (host, path) = urllib.parse.splithost(rest)
+        (host, port) = urllib.parse.splitport(host)
 
         if type_ == "https":
             if port == None:
@@ -78,7 +76,7 @@ def open_url(method, url, max_redirects = 3, redirect_on_status = (301, 302, 303
         elif response.status in redirect_on_status:
             headers = response.getheaders()
             for header in headers:
-                if header[0] == "location":
+                if header[0].lower() == "location":
                     url = header[1]
         else:
             log.warning('Received unexpected status: %i %s' % (response.status, response.reason))
@@ -94,4 +92,4 @@ def generate_random_string(length,
     return ''.join(random.choice(character_set) for n in range(length))
 
 def compute_hash(data):
-    return md5.md5(data).hexdigest()
+    return md5.md5(data.encode('utf-8')).hexdigest()

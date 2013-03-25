@@ -22,6 +22,7 @@ import urllib
 import logging
 import imp
 import sys
+import traceback
 
 from multiprocessing.pool import ThreadPool
 
@@ -37,6 +38,19 @@ loglevels = {
     1: logging.INFO,
     2: logging.DEBUG,
 }
+
+
+class ThreadException(Exception):
+    def __init__(self, type, value, traceback):
+        super(ThreadException, self).__init__("Exception in a thread")
+        self.thread_traceback = traceback
+        self.thread_value = value
+        self.thread_type = type
+
+    def __str__(self):
+        exception_rep = traceback.format_exception(self.thread_type, self.thread_value, self.thread_traceback)
+        return "%s\n%s" % (super(ThreadException, self).__str__(),
+                           ''.join(exception_rep))
 
 
 # stores exception data from the threads
@@ -56,7 +70,7 @@ def main(opts, args):
     feed_list = []
     for url in settings.feeds():
         # get config data
-        name = urllib.urlencode((('', url), )).split("=")[1]
+        name = urllib.parse.urlencode((('', url), )).split("=")[1]
         if settings.has_option(url, 'name'):
             name = settings.get(url, 'name')
 
@@ -87,26 +101,32 @@ def main(opts, args):
         feed = Feed(url, name, relative_maildir, keywords=keywords, item_filters=item_filters, html=html)
         feed_list.append(feed)
 
-    pool = ThreadPool(num_threads)
-    def fetch_feed_closure(f):
-        try:
-            fetch_feed(f, maildir)
-        # store first exception data to be collected in the main thread
-        except Exception, e:
-            global exc_info
-            import sys
-            if not exc_info: exc_info = sys.exc_info()
-
-    global exc_info
     global item_count
     item_count = 0
-    res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
-    while not res.ready():
-        res.wait(1)
-        if exc_info: raise exc_info[1], None, exc_info[2]
-    pool.terminate()
-    print("%d items downloaded" % item_count)
+    if num_threads > 1:
+        pool = ThreadPool(num_threads)
+        def fetch_feed_closure(f):
+            try:
+                fetch_feed(f, maildir)
+            # store first exception data to be collected in the main thread
+            except Exception as e:
+                global exc_info
+                import sys
+                if not exc_info: exc_info = sys.exc_info()
 
+        global exc_info
+        res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
+        while not res.ready():
+            res.wait(1)
+            if exc_info:
+                raise ThreadException(exc_info[0], exc_info[1], exc_info[2])
+        pool.terminate()
+    else:
+        print("Threading disabled")
+        for feed in feed_list:
+            fetch_feed(feed, maildir)
+
+    print("%d items downloaded" % item_count)
 
 def fetch_feed(feed, maildir):
     print("fetching items in '%s'" % feed.name)

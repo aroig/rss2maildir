@@ -21,16 +21,21 @@
 
 import re
 import os
-import email
 import socket
 import datetime
 from .HTML2Text import HTML2Text
 from .utils import generate_random_string, compute_hash
 
-import htmlentitydefs
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email import charset
+from email.header import Header
 
-# Default encoding mode set to Quoted Printable. Acts globally!
-email.Charset.add_charset('utf-8', email.Charset.QP, email.Charset.QP, 'utf-8')
+import html.entities
+
+
+# Default encoding mode set to Quoted Printable.
+charset.add_charset('utf-8', charset.QP, charset.QP)
 
 class Item(object):
     def __init__(self, feed, feed_item):
@@ -48,13 +53,13 @@ class Item(object):
         if feed_item.has_key('content'):
             self.content = feed_item['content'][0]['value']
         else:
-            self.content = feed_item.get('description', u'')
+            self.content = feed_item.get('description', '')
 
-        self.md5sum = compute_hash(self.content.encode('utf-8'))
+        self.md5sum = compute_hash(self.content)
         self.id = feed_item.get('id', None)
 
-        if self.id:      self.md5id = compute_hash(self.id.strip().encode('utf-8'))
-        elif self.title: self.md5id = compute_hash(self.title.strip().encode('utf-8'))
+        if self.id:      self.md5id = compute_hash(self.id.strip())
+        elif self.title: self.md5id = compute_hash(self.title.strip())
         else:            self.md5id = None
 
         tags = feed_item.get('tags', [])
@@ -90,15 +95,15 @@ class Item(object):
 
 
     def __str__(self):
-        ret = u""
-        ret = ret + u"Title: %s\n" % self.title
-        ret = ret + u"Author: %s\n" % self.author
-        ret = ret + u"Keywords: %s\n" % ', '.join(self.keywords)
-        ret = ret + u"MD5: %s\n" % self.md5sum
-        ret = ret + u"ID: %s\n" % self.id
-        ret = ret + u"URL: %s\n" % self.link
-        ret = ret + u"Content:\n%s\n" % self.content
-        return ret.encode('utf-8')
+        ret = ""
+        ret = ret + "Title: %s\n" % self.title
+        ret = ret + "Author: %s\n" % self.author
+        ret = ret + "Keywords: %s\n" % ', '.join(self.keywords)
+        ret = ret + "MD5: %s\n" % self.md5sum
+        ret = ret + "ID: %s\n" % self.id
+        ret = ret + "URL: %s\n" % self.link
+        ret = ret + "Content:\n%s\n" % self.content
+        return ret
 
 
     def unescape_utf8_xml(self, text):
@@ -108,15 +113,15 @@ class Item(object):
                 # character reference
                 try:
                     if txt[:3] == "&#x":
-                        return unichr(int(txt[3:-1], 16))
+                        return chr(int(txt[3:-1], 16))
                     else:
-                        return unichr(int(txt[2:-1]))
+                        return chr(int(txt[2:-1]))
                 except ValueError:
                     pass
             else:
                 # named entity
                 try:
-                    txt = unichr(htmlentitydefs.name2codepoint[txt[1:-1]])
+                    txt = chr(html.entities.name2codepoint[txt[1:-1]])
                 except KeyError:
                     pass
             return txt # leave as is
@@ -125,51 +130,49 @@ class Item(object):
 
 
 
-    text_template = u'%(text_content)s\n\nURL: %(link)s'
-    html_template = u'%(html_content)s\n<p>URL: <a href="%(link)s">%(link)s</a></p>'
+    text_template = '%(text_content)s\n\nURL: %(link)s'
+    html_template = '%(html_content)s\n<p>URL: <a href="%(link)s">%(link)s</a></p>'
     def create_message(self, html = True):
         item = self
-        message = email.MIMEMultipart.MIMEMultipart('alternative')
+        message = MIMEMultipart('alternative')
 
-#       message.set_unixfrom('%s <rss2maildir@localhost>' % item.feed.url)
-#       message.add_header('To', '%s <rss2maildir@localhost>' % item.feed.url)
+        header = Header()
+        if item.author: header.append(item.author, 'utf-8')
+        else:           header.append(item.feed.name, 'utf-8')
+        header.append(" <rss2maildir@localhost>", 'ascii')
+        message['From'] = header
 
-        if item.author:
-            message.add_header('From', '%s <rss2maildir@localhost>' % item.author.encode('utf-8'))
-        else:
-            message.add_header('From', '%s <rss2maildir@localhost>' % item.feed.name.encode('utf-8'))
+        message['To'] = 'rss2maildir@localhost'
 
-        message.add_header('To', 'rss2maildir@localhost')
-
-        if item.title: title = item.title.replace(u'<', u'&lt;').replace(u'>', u'&gt;')
+        header = Header()
+        if item.title: title = item.title.replace('<', '&lt;').replace('>', '&gt;')
         else:          title = item.feed.name
-        title = self.unescape_utf8_xml(title).encode('utf-8')
-        message.add_header('Subject', title)
+        title = self.unescape_utf8_xml(title)
+        header.append(title, 'utf-8')
+        message['Subject'] = header
 
-        if item.link:
-            message.add_header('X-URL', item.link)
+        if item.link: message['X-URL'] = item.link
 
-        message.add_header('Message-ID', item.message_id)
+        message['Message-ID'] = item.message_id
 
-        if item.previous_message_id:
-            message.add_header('References', item.previous_message_id)
+        if item.previous_message_id: message['References'] = item.previous_message_id
 
-        message.add_header('Date', item.createddate.strftime('%a, %e %b %Y %T -0000'))
+        message['Date'] =  item.createddate.strftime('%a, %e %b %Y %T -0000')
 
-        message.add_header('X-RSS-ID', item.id)
-        message.add_header('X-RSS-Categories', ', '.join(sorted(item.categories)))
-        message.add_header('X-Keywords', ', '.join(sorted(item.keywords)))
-
-        message.add_header('X-rss2maildir-rundate',
-                       datetime.datetime.now().strftime('%a, %e %b %Y %T -0000'))
+        message['X-RSS-ID'] = item.id
+        message['X-RSS-Categories'] = ', '.join(sorted(item.categories))
+        message['X-Keywords'] = ', '.join(sorted(item.keywords))
+        message['X-rss2maildir-rundate'] = datetime.datetime.now().strftime('%a, %e %b %Y %T -0000')
 
         message.set_default_type('text/plain')
 
+        # NOTE: That encode decode thing is a dirty trick to workarround this bug
+        # http://bugs.python.org/issue16948
         if html:
-            htmlpart = email.MIMEText.MIMEText((item.html_template % item).encode('utf-8'), 'html', 'utf-8')
+            htmlpart = MIMEText((item.html_template % item).encode('utf-8').decode('latin1'), 'html')
             message.attach(htmlpart)
         else:
-            textpart = email.MIMEText.MIMEText((item.text_template % item).encode('utf-8'), 'plain', 'utf-8')
+            textpart = MIMEText((item.text_template % item).encode('utf-8').decode('latin1'), 'plain')
             message.attach(textpart)
 
         return message
@@ -178,7 +181,7 @@ class Item(object):
     @property
     def text_content(self):
         textparser = HTML2Text()
-        textparser.feed(self.content.encode('utf-8'))
+        textparser.feed(self.content)
         return textparser.gettext()
 
 

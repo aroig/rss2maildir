@@ -129,9 +129,6 @@ class Item(object):
         return re.sub("&#?[a-zA-Z0-9_]+;", fixup, text, flags=re.UNICODE)
 
 
-
-    text_template = '%(text_content)s\n\nURL: %(link)s'
-    html_template = '%(html_content)s\n<p>URL: <a href="%(link)s">%(link)s</a></p>'
     def create_message(self, html = True):
         item = self
         message = MIMEMultipart('alternative')
@@ -169,10 +166,10 @@ class Item(object):
         # NOTE: That encode decode thing is a dirty trick to workarround this bug
         # http://bugs.python.org/issue16948
         if html:
-            htmlpart = MIMEText((item.html_template % item).encode('utf-8').decode('latin1'), 'html')
+            htmlpart = MIMEText(item.html_content.encode('utf-8').decode('latin1'), 'html')
             message.attach(htmlpart)
         else:
-            textpart = MIMEText((item.text_template % item).encode('utf-8').decode('latin1'), 'plain')
+            textpart = MIMEText(item.text_content.encode('utf-8').decode('latin1'), 'plain')
             message.attach(textpart)
 
         return message

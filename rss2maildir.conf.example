@@ -1,10 +1,21 @@
 [general]
 maildir_root = RSSMaildir
 
+# number of concurrent threads
+threads = 1
+
 # This is used to generate the target for feeds that do not explicitly
 # set the maildir option. '{}' is replaced by the feeds name if it
 # has been specified or the urlencoded feed URL.
-maildir_template = .feeds.{}
+maildir_template = {}
+
+
+[common]
+
+# store HTML content
+html = true
+
+
 
 [http://www.sommitrealweird.co.uk/blog/?flav=atom]
 name = Brett Parker

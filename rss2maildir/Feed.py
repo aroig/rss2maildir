@@ -29,7 +29,7 @@ from .utils import open_url, generate_random_string
 log = logging.getLogger('rss2maildir:Feed')
 
 class Feed(object):
-    def __init__(self, url, name, maildir, keywords=[], item_filters=None, html=True):
+    def __init__(self, url, name, maildir, keywords=[], item_filters=[], html=True):
         self.url = url
         self.name = name.strip()
         self.keywords = set(keywords)

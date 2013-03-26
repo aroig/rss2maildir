@@ -78,9 +78,8 @@ def main(opts, args):
         if settings.has_option(url, 'maildir'):
             relative_maildir = settings.get(url, 'maildir')
 
-        keywords = []
-        if settings.has_option(url, 'keywords'):
-            keywords = sorted([k.strip() for k in settings.get(url, 'keywords').split(',')])
+        # get list of keywords
+        keywords = sorted(settings.getlist(url, 'keywords'))
 
         # make sure a maildir for feed exists
         try:
@@ -90,10 +89,7 @@ def main(opts, args):
             log.warning('Skipping feed %s' % url)
 
         # load item filters
-        item_filters = None
-        if settings.has_option(url, 'filters'):
-            item_filters_raw = [ft.strip() for ft in settings.get(url, 'filters').split(',')]
-            item_filters = [getattr(settings.filters, ft) for ft in item_filters_raw]
+        item_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'filters')]
 
         # message format settings
         html = settings.getboolean(url, 'html')
@@ -139,10 +135,9 @@ def fetch_feed(feed, maildir):
         if not maildir.new(item): continue
 
         # apply item filters
-        if feed.item_filters:
-            for item_filter in feed.item_filters:
-                item = item_filter(item)
-                if not item: break
+        for item_filter in feed.item_filters:
+            item = item_filter(item)
+            if not item: break
         if not item: continue
 
         count = count + 1

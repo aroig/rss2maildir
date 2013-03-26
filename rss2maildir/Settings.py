@@ -57,6 +57,19 @@ class FeedConfig(SafeConfigParser):
         raise KeyError('Neither section %s nor %s contained the option %s' %
                        (section, self.common_section_name, key))
 
+    def getlist(self, section, key, *args, **kwargs):
+        if self.has_option('common', key):
+            value = [k.strip() for k in self.get('common', key, *args, **kwargs).split(',')]
+        else:
+            value = []
+
+        if self.has_option(section, key):
+            newvalue = [k.strip() for k in self.get(section, key, *args, **kwargs).split(',')]
+        else:
+            newvalue = []
+
+        return value + newvalue
+
     def __contains__(self, key):
         return self.has_option(self.general_section_name, key)
 

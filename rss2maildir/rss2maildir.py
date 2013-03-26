@@ -23,11 +23,13 @@ import logging
 import imp
 import sys
 import traceback
+import netrc
 
 from multiprocessing.pool import ThreadPool
 
 from .Maildir import Maildir
 from .Feed import Feed
+from .Cache import FeedCache
 from .Settings import FeedConfig
 
 
@@ -66,9 +68,25 @@ def main(opts, args):
     maildir = Maildir(settings['maildir_root'])
 
     num_threads = int(settings['threads'])
+    max_cache = int(settings['max_cache'])
+
+    cache = FeedCache(max_cache)
+    # TODO: also get user and password from config file
+    netrc_file = os.path.expanduser('~/.netrc')
+    try:
+        auth = netrc.netrc(netrc_file).authenticators('google.com')
+        cache.authenticate(auth[0], auth[2])
+    except netrc.NetrcParseError as err:
+        log.warning("Can't find authenticate to google reader for cache.")
+        cache = None
 
     feed_list = []
     for url in settings.feeds():
+
+        # setup cache for this feed
+        if settings.getboolean(url, 'cached'): feed_cache = cache
+        else:                                  feed_cache = None
+
         # get config data
         name = urllib.parse.urlencode((('', url), )).split("=")[1]
         if settings.has_option(url, 'name'):
@@ -91,10 +109,12 @@ def main(opts, args):
         # load item filters
         item_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'filters')]
 
-        # message format settings
-        html = settings.getboolean(url, 'html')
+        feed = Feed(url, name, relative_maildir,
+                    keywords = keywords,
+                    item_filters = item_filters,
+                    html = settings.getboolean(url, 'html'),
+                    cache = feed_cache)
 
-        feed = Feed(url, name, relative_maildir, keywords=keywords, item_filters=item_filters, html=html)
         feed_list.append(feed)
 
     global item_count
@@ -126,6 +146,7 @@ def main(opts, args):
 
 def fetch_feed(feed, maildir):
     print("fetching items in '%s'" % feed.name)
+
     count = 0
     global item_count
 

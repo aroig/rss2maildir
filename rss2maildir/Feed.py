@@ -22,6 +22,7 @@
 import logging
 import feedparser
 import datetime
+import urllib
 
 from .Item import Item
 from .utils import open_url, generate_random_string
@@ -29,24 +30,39 @@ from .utils import open_url, generate_random_string
 log = logging.getLogger('rss2maildir:Feed')
 
 class Feed(object):
-    def __init__(self, url, name, maildir, keywords=[], item_filters=[], html=True):
+    def __init__(self, url, name, maildir, keywords=[], item_filters=[], html=True, cache=None):
         self.url = url
         self.name = name.strip()
         self.keywords = set(keywords)
         self.item_filters = item_filters
         self.html = html
         self.maildir = maildir.strip()
-        self.response = None
+        self.cache = cache
+
+
+    def _open_feed(self, url):
+        try:
+            headers = {'User-agent': 'Mozilla/5.0'}
+            req = urllib.request.Request(url, headers=headers)
+
+            if self.cache: return self.cache.open_feed(url)
+            else:          return urllib.request.urlopen(req)
+
+        except urllib.error.HTTPError as err:
+            log.warning('http request failed: %s' % str(err))
+            return None
+
 
 
     def items(self):
-        self.response = open_url('GET', self.url)
-        if not self.response:
+        response = self._open_feed(self.url)
+        if not response:
             log.warning('Fetching feed %s failed' % (self.url))
             return
 
         try:
-            parsed_feed = feedparser.parse(self.response)
+            parsed_feed = feedparser.parse(response)
+
         except Exception as e:
             log.warning('Parsing feed %s failed' % (self.url))
             return

@@ -30,60 +30,38 @@ from .utils import open_url, generate_random_string
 log = logging.getLogger('rss2maildir:Feed')
 
 class Feed(object):
-    def __init__(self, url, name, maildir, keywords=[], item_filters=[], html=True, cache=None):
+    def __init__(self, url, name, maildir, source, keywords=[], item_filters=[], html=True, max_cached=100):
         self.url = url
         self.name = name.strip()
         self.keywords = set(keywords)
         self.item_filters = item_filters
         self.html = html
         self.maildir = maildir.strip()
-        self.cache = cache
+        self.source = source
+        self.updateddate = None
+        self.max_cached = max_cached
 
-
-    def _open_feed(self, url):
+    def _get_updateddate(self, parsed_feed):
+        self.updateddate = datetime.datetime.now()
         try:
-            headers = {'User-agent': 'Mozilla/5.0'}
-            req = urllib.request.Request(url, headers=headers)
+            self.updateddate = datetime.datetime(*(parsed_feed['published_parsed'][0:6]))
+        except Exception as e:
+            pass
 
-            if self.cache: res =  self.cache.open_feed(url)
-            else:
-                res = urllib.request.urlopen(req)
-                url2 = res.geturl()
-                if url != url2: log.warning("Redirected to '%s'" % url2)
-
-            return res
-
-        except urllib.error.HTTPError as err:
-            log.warning('http request failed: %s' % str(err))
-            return None
-
+        try:
+            self.updateddate = datetime.datetime(*(parsed_feed['updated_parsed'][0:6]))
+        except Exception as e:
+            pass
 
 
     def items(self):
-        response = self._open_feed(self.url)
-        if not response:
-            log.warning('Fetching feed %s failed' % (self.url))
-            return
+        parsed_feed = self.source.parse_feed(self.url)
+        if not parsed_feed: return
 
-        try:
-            parsed_feed = feedparser.parse(response)
+        # get the updated date for the feed
+        self._get_updateddate(parsed_feed)
 
-        except Exception as e:
-            log.warning('Parsing feed %s failed' % (self.url))
-            return
-
-        self.updateddate = datetime.datetime.now()
-        try:
-            self.updateddate = datetime.datetime(*(parsed_feed['feed']['published_parsed'][0:6]))
-        except Exception as e:
-            pass
-
-        try:
-            self.updateddate = datetime.datetime(*(parsed_feed['feed']['updated_parsed'][0:6]))
-        except Exception as e:
-            pass
-
-        for feed_item in parsed_feed['items']:
+        for feed_item in self.source.parse_items(self.url, self.max_cached):
             yield Item(self, feed_item)
 
 

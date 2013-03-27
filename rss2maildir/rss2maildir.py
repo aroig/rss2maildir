@@ -29,7 +29,7 @@ from multiprocessing.pool import ThreadPool
 
 from .Maildir import Maildir
 from .Feed import Feed
-from .Cache import FeedCache
+from .Source import FeedCachedSource, FeedSource
 from .Settings import FeedConfig
 
 
@@ -68,24 +68,29 @@ def main(opts, args):
     maildir = Maildir(settings['maildir_root'])
 
     num_threads = int(settings['threads'])
-    max_cache = int(settings['max_cache'])
 
-    cache = FeedCache(max_cache)
+    # feed sources. implement the download and parsing machinery
+    cached_source = FeedCachedSource()
+    raw_source = FeedSource()
+
     # TODO: also get user and password from config file
+    # TODO: only authenticate if I need it
     netrc_file = os.path.expanduser('~/.netrc')
     try:
         auth = netrc.netrc(netrc_file).authenticators('google.com')
-        cache.authenticate(auth[0], auth[2])
+        cached_source.authenticate(auth[0], auth[2])
     except netrc.NetrcParseError as err:
         log.warning("Can't find authenticate to google reader for cache.")
-        cache = None
 
     feed_list = []
     for url in settings.feeds():
 
-        # setup cache for this feed
-        if settings.getboolean(url, 'cached'): feed_cache = cache
-        else:                                  feed_cache = None
+        # setup feed source
+        if settings.getboolean(url, 'cached'): feed_source = cached_source
+        else:                                  feed_source = raw_source
+
+        # max number of cached items to retrieve
+        max_cached = int(settings.get(url, 'max_cached'))
 
         # get config data
         name = urllib.parse.urlencode((('', url), )).split("=")[1]
@@ -109,11 +114,11 @@ def main(opts, args):
         # load item filters
         item_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'filters')]
 
-        feed = Feed(url, name, relative_maildir,
+        feed = Feed(url, name, relative_maildir, feed_source,
                     keywords = keywords,
                     item_filters = item_filters,
                     html = settings.getboolean(url, 'html'),
-                    cache = feed_cache)
+                    max_cached = max_cached)
 
         feed_list.append(feed)
 

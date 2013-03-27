@@ -135,6 +135,7 @@ def main(opts, args):
                 import sys
                 if not exc_info: exc_info = sys.exc_info()
 
+        print("beginning to fetch feeds (%d threads)" % num_threads)
         global exc_info
         res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
         while not res.ready():
@@ -150,8 +151,6 @@ def main(opts, args):
     print("%d items downloaded" % item_count)
 
 def fetch_feed(feed, maildir):
-    print("fetching items in '%s'" % feed.name)
-
     count = 0
     global item_count
 
@@ -170,5 +169,6 @@ def fetch_feed(feed, maildir):
         # deliver item
         maildir.deliver(item, html=feed.html)
 
+    print("fetched items in '%s' [%d]" % (feed.name, count))
     item_count = item_count + count
     return count

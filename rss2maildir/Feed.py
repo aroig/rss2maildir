@@ -45,8 +45,13 @@ class Feed(object):
             headers = {'User-agent': 'Mozilla/5.0'}
             req = urllib.request.Request(url, headers=headers)
 
-            if self.cache: return self.cache.open_feed(url)
-            else:          return urllib.request.urlopen(req)
+            if self.cache: res =  self.cache.open_feed(url)
+            else:
+                res = urllib.request.urlopen(req)
+                url2 = res.geturl()
+                if url != url2: log.warning("Redirected to '%s'" % url2)
+
+            return res
 
         except urllib.error.HTTPError as err:
             log.warning('http request failed: %s' % str(err))

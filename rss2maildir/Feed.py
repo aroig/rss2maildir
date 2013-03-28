@@ -60,8 +60,12 @@ class Feed(object):
         # get the updated date for the feed
         self._get_updateddate(parsed_feed)
 
+        count = 0
         for feed_item in self.source.parse_items(self.url, self.max_cached):
             yield Item(self, feed_item)
+            count += 1
+
+        if count == 0: log.warning("empty parsed feed: %s" % self.url)
 
 
     def new_items(self, maildir):

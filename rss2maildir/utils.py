@@ -22,13 +22,10 @@ import sys
 import os
 import errno
 import random
-import socket
 import string
-import urllib
 import logging
 
 import hashlib as md5
-import http.client as httplib
 
 
 def mkdir_p(path):
@@ -45,51 +42,11 @@ def make_maildir(path):
                     for subdir in ('cur', 'tmp', 'new')):
         mkdir_p(dirname)
 
-def open_url(method, url, max_redirects = 6, redirect_on_status = (301, 302, 303, 307)):
-    log = logging.getLogger('%s %s' % (method, url))
-
-    redirectcount = 0
-    while redirectcount < max_redirects:
-        (type_, rest) = urllib.parse.splittype(url)
-        (host, path) = urllib.parse.splithost(rest)
-        (host, port) = urllib.parse.splitport(host)
-
-        if type_ == "https":
-            if port == None:
-                port = 443
-        elif port == None:
-            port = 80
-
-        try:
-            if type_ == "http":
-                conn = httplib.HTTPConnection("%s:%s" %(host, port))
-            else:
-                conn = httplib.HTTPSConnection("%s:%s" %(host, port))
-            conn.request(method, path)
-        except (httplib.HTTPException, socket.error) as e:
-            log.warning('http request failed: %s' % str(e))
-            return None
-
-        response = conn.getresponse()
-        if response.status == 200:
-            return response
-        elif response.status in redirect_on_status:
-            headers = response.getheaders()
-            for header in headers:
-                if header[0].lower() == "location":
-                    url = header[1]
-        else:
-            log.warning('Received unexpected status: %i %s' % (response.status, response.reason))
-            return None
-
-        redirectcount = redirectcount + 1
-
-    log.warning('Maximum number of redirections reached')
-    return None
 
 def generate_random_string(length,
                            character_set = string.ascii_letters + string.digits):
     return ''.join(random.choice(character_set) for n in range(length))
+
 
 def compute_hash(data):
     return md5.md5(data.encode('utf-8')).hexdigest()

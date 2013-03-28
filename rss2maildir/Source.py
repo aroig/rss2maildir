@@ -18,14 +18,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import feedparser
-import urllib
 import logging
 import re
 
 
 from io import BytesIO
 from lxml import etree
-
+import urllib
+import socket
+import http.client
 
 log = logging.getLogger('rss2maildir:FeedSource')
 
@@ -39,19 +40,74 @@ class FeedSource(object):
         self.items = None
 
 
-    def _open_url(self, url, auth=None, headers={}):
-        headers['User-agent'] = 'Mozilla/5.0'
+#    def _open_url(self, url, headers={}):
+#        headers['User-agent'] = 'Mozilla/5.0'
+#
+#        try:
+#            req = urllib.request.Request(url, headers=headers)
+#            res = urllib.request.urlopen(req)
+#            if url != res.geturl():
+#                log.warning("redirected to '%s'" % res.geturl())
+#            return res
+#
+#        except urllib.error.HTTPError as err:
+#            log.warning('http request failed: %s' % str(err))
+#            return None
 
-        req = urllib.request.Request(url, headers=headers)
-        try:
-            res = urllib.request.urlopen(req)
-            if url != res.geturl():
-                log.warning("Redirected to '%s'" % res.geturl())
-            return res
 
-        except urllib.error.HTTPError as err:
-            log.warning('http request failed: %s' % str(err))
-            return None
+    # NOTE: asymptotia.com returns "403 Bad Behavior" with urllib, because of the
+    # header "Connection: close". I can't get rid of this, so I use rss2maildir's
+    # own HTTP function.
+
+    def _open_url(self, url, headers = {}):
+        max_redirects = 6
+        redirect_on_status = (301, 302, 303, 307)
+        log = logging.getLogger('GET %s' % url)
+
+        urlold = url
+        redirectcount = 0
+        while redirectcount < max_redirects:
+            (type_, rest) = urllib.parse.splittype(url)
+            (host, path) = urllib.parse.splithost(rest)
+            (host, port) = urllib.parse.splitport(host)
+
+            if type_ == "https":
+                if port == None:
+                    port = 443
+            elif port == None:
+                port = 80
+
+            try:
+                if type_ == "http":
+                    conn = http.client.HTTPConnection("%s:%s" %(host, port))
+                else:
+                    conn = http.client.HTTPSConnection("%s:%s" %(host, port))
+                conn.request('GET', path, headers=headers)
+            except (http.client.HTTPException, socket.error) as e:
+                log.warning('http request failed: %s' % str(e))
+                return None
+
+            response = conn.getresponse()
+            if response.status == 200:
+                if urlold != url:
+                    log.warning("redirected to '%s'" % url)
+                return response
+
+            elif response.status in redirect_on_status:
+                headers = response.getheaders()
+                for header in headers:
+                    if header[0].lower() == "location":
+                        url = header[1]
+
+            else:
+                log.warning('Received unexpected status: %i %s' % (response.status, response.reason))
+                return None
+
+            redirectcount = redirectcount + 1
+
+        log.warning('Maximum number of redirections reached')
+        return None
+
 
 
     def _parse_stream(self, url, stream):
@@ -92,7 +148,6 @@ class FeedSource(object):
 
         for item in self.items:
             yield item
-
 
 
 

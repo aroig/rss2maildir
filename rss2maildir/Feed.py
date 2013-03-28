@@ -22,10 +22,9 @@
 import logging
 import feedparser
 import datetime
-import urllib
 
 from .Item import Item
-from .utils import open_url, generate_random_string
+from .utils import generate_random_string
 
 log = logging.getLogger('rss2maildir:Feed')
 

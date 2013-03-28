@@ -66,11 +66,3 @@ class Feed(object):
             count += 1
 
         if count == 0: log.warning("empty parsed feed: %s" % self.url)
-
-
-    def new_items(self, maildir):
-        for item in self.items():
-            if maildir.seen(item):
-                log.info('Item %s already seen, skipping' % item.link)
-                continue
-            yield item

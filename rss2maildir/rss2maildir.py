@@ -135,7 +135,7 @@ def main(opts, args):
                 import sys
                 if not exc_info: exc_info = sys.exc_info()
 
-        print("beginning to fetch feeds (%d threads)" % num_threads)
+        print("fetching feeds (%d threads)" % num_threads)
         global exc_info
         res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
         while not res.ready():
@@ -144,7 +144,7 @@ def main(opts, args):
                 raise ThreadException(exc_info[0], exc_info[1], exc_info[2])
         pool.terminate()
     else:
-        print("Threading disabled")
+        print("fetching feeds (single threaded)")
         for feed in feed_list:
             fetch_feed(feed, maildir)
 
@@ -157,13 +157,18 @@ def fetch_feed(feed, maildir):
     for item in feed.items():
 #        print(str(item))
 #        continue
-        if not maildir.new(item): continue
 
         # apply item filters
         for item_filter in feed.item_filters:
             item = item_filter(item)
             if not item: break
-        if not item: continue
+        if not item:
+            continue                   # the item is discarded
+        else:
+            item.compute_hashes()      # need to recompute hashes, as id's may have changed
+
+        # if not new, skip
+        if not maildir.new(item): continue
 
         count = count + 1
         # deliver item

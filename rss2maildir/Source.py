@@ -165,7 +165,7 @@ class FeedCachedSource(FeedSource):
         self.auth = re.search(b'Auth=(.*)$', raw).group(1).decode('utf-8')
 
 
-    def _process_feed(self, xml):
+    def _process_feed(self, url, xml):
         """Recovers ids from the original feed, instead of the reader ids.
            Returns the continuation string, to keep fetching."""
         ns = {"atom": "http://www.w3.org/2005/Atom",
@@ -185,10 +185,13 @@ class FeedCachedSource(FeedSource):
 
             # move <link rel=canonical> to <link rel=alternate>
             for it in entry.xpath('./atom:link', namespaces = ns):
+                link_can = link_alt = None
                 if it.attrib['rel'] == 'canonical': link_can = it
                 if it.attrib['rel'] == 'alternate': link_alt = it
             if link_can != None and link_alt != None:
                 link_alt.attrib['href'] = link_can.attrib['href']
+            else:
+                trouble = True
 
         for it in xml.xpath('//atom:feed/gr:continuation', namespaces = ns):
             return it.text
@@ -215,7 +218,7 @@ class FeedCachedSource(FeedSource):
             if not response: return
 
             xml = etree.parse(response)
-            continuation = self._process_feed(xml)
+            continuation = self._process_feed(url, xml)
 
             # Ideally I should be able to pass the xml tree to feedparser... oh well.
             parsed_feed = self._parse_stream(url, BytesIO(etree.tostring(xml)))

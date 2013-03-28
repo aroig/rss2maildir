@@ -47,20 +47,14 @@ class Item(object):
         self.keywords = set(self.feed.keywords)
 
         # get rid of newlines in the title
-        if self.title:
-            self.title = re.sub('\s', ' ', self.title.strip())
+        if self.title: self.title = re.sub('\s', ' ', self.title.strip())
 
         if feed_item.has_key('content'):
             self.content = feed_item['content'][0]['value']
         else:
             self.content = feed_item.get('description', '')
 
-        self.md5sum = compute_hash(self.content)
         self.id = feed_item.get('id', None)
-
-        if self.id:      self.md5id = compute_hash(self.id.strip())
-        elif self.title: self.md5id = compute_hash(self.title.strip())
-        else:            self.md5id = None
 
         tags = feed_item.get('tags', [])
         self.categories = set([c['term'].strip() for c in tags if c['term']])
@@ -83,11 +77,14 @@ class Item(object):
 
 
         self.previous_message_id = None
-        self.message_id = '<%s.%s@%s>' % (
-            datetime.datetime.now().strftime("%Y%m%d%H%M"),
-            generate_random_string(6),
-            socket.gethostname()
-        )
+        if self.id:
+            self.message_id = '<%s.%s@rss2maildir>' % (self.feed.maildir, self.id)
+        else:
+            self.message_id = '<%s.%s@rss2maildir>' % (
+                datetime.datetime.now().strftime("%Y%m%d%H%M"),
+                generate_random_string(6))
+
+        self.compute_hashes()
 
 
     def __getitem__(self, key):
@@ -104,6 +101,15 @@ class Item(object):
         ret = ret + "URL: %s\n" % self.link
         ret = ret + "Content:\n%s\n" % self.content
         return ret
+
+
+    def compute_hashes(self):
+        self.md5sum = compute_hash(self.content)
+
+        if self.id:      self.md5id = compute_hash(self.id.strip())
+        elif self.title: self.md5id = compute_hash(self.title.strip())
+        else:            self.md5id = None
+
 
 
     def unescape_utf8_xml(self, text):

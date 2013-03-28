@@ -211,8 +211,9 @@ class FeedCachedSource(FeedSource):
         continuation = None
         while count < max_cached:
             num = min(max_cached - count, 100)
-            if continuation: cache_url = '%s/%s?r=n&n=%d&c=%s' % (baseurl, url, num, continuation)
-            else:            cache_url = '%s/%s?r=n&n=%d' % (baseurl, url, num)
+            urlq = urllib.parse.quote(url)
+            if continuation: cache_url = '%s/%s?r=n&n=%d&c=%s' % (baseurl, urlq, num, continuation)
+            else:            cache_url = '%s/%s?r=n&n=%d' % (baseurl, urlq, num)
 
             response = self._open_url(cache_url, headers=headers)
             if not response: return

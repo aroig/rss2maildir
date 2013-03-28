@@ -175,12 +175,13 @@ class FeedCachedSource(FeedSource):
         for entry in xml.xpath('//atom:feed/atom:entry', namespaces = ns):
             # recover the original ID
             for it in entry.xpath('./atom:id', namespaces = ns):
-                it.text = it.attrib[idkey]
-                del it.attrib[idkey]
+                if idkey in it.attrib:
+                    it.text = it.attrib[idkey]
+                    del it.attrib[idkey]
 
             # get rid of greader specific categories
             for it in entry.xpath('./atom:category', namespaces = ns):
-                if it.attrib['scheme'] == "http://www.google.com/reader/":
+                if 'scheme' in it.attrib and it.attrib['scheme'] == "http://www.google.com/reader/":
                     entry.remove(it)
 
             # move <link rel=canonical> to <link rel=alternate>
@@ -188,10 +189,9 @@ class FeedCachedSource(FeedSource):
                 link_can = link_alt = None
                 if it.attrib['rel'] == 'canonical': link_can = it
                 if it.attrib['rel'] == 'alternate': link_alt = it
-            if link_can != None and link_alt != None:
+
+            if link_can != None and link_alt != None and 'href' in link_can.attrib:
                 link_alt.attrib['href'] = link_can.attrib['href']
-            else:
-                trouble = True
 
         for it in xml.xpath('//atom:feed/gr:continuation', namespaces = ns):
             return it.text

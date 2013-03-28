@@ -72,11 +72,12 @@ class Maildir(object):
 
 
     def filename(self, item):
+        timestamp = max(int(item.createddate.strftime('%s')), 0)
         return '%i.%s.%s.%s.%s' % (os.getpid(),
                                    socket.gethostname(),
                                    item.md5id,
                                    item.md5sum,
-                                   item.createddate.strftime('%s'))
+                                   timestamp)
 
 
     def path2metadata(self, path):

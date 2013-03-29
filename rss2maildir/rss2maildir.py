@@ -164,8 +164,8 @@ def fetch_feed(feed, maildir):
             if not item: break
         if not item:
             continue                   # the item is discarded
-        else:
-            item.compute_hashes()      # need to recompute hashes, as id's may have changed
+
+        item.compute_hashes()      # need to recompute hashes, as id's may have changed
 
         # if not new, skip
         if not maildir.new(item): continue

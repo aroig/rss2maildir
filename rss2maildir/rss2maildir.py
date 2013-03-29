@@ -155,6 +155,7 @@ def fetch_feed(feed, maildir):
     global item_count
 
     for item in feed.items():
+        link = item.link
 #        print(str(item))
 #        continue
 
@@ -163,6 +164,7 @@ def fetch_feed(feed, maildir):
             item = item_filter(item)
             if not item: break
         if not item:
+            log.warning("filtering out item: %s" % link)
             continue                   # the item is discarded
 
         item.compute_hashes()      # need to recompute hashes, as id's may have changed

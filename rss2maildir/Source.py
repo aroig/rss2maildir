@@ -94,10 +94,10 @@ class FeedSource(object):
                 return response
 
             elif response.status in redirect_on_status:
-                headers = response.getheaders()
-                for header in headers:
-                    if header[0].lower() == "location":
-                        url = header[1]
+                response_headers = response.getheaders()
+                for h in response_headers:
+                    if h[0].lower() == "location":
+                        url = h[1]
 
             else:
                 log.warning('Received unexpected status: %i %s' % (response.status, response.reason))

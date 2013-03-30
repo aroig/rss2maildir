@@ -73,6 +73,9 @@ def main(opts, args):
     cached_source = FeedCachedSource()
     raw_source = FeedSource()
 
+    if len(args) > 0: filter_feeds = set(args)
+    else:             filter_feeds = None
+
     # TODO: also get user and password from config file
     # TODO: only authenticate if I need it
     netrc_file = os.path.expanduser('~/.netrc')
@@ -103,6 +106,10 @@ def main(opts, args):
 
         # get list of keywords
         keywords = sorted(settings.getlist(url, 'keywords'))
+
+        # filter feeds if passed arguments
+        if filter_feeds and not relative_maildir in filter_feeds:
+            continue
 
         # make sure a maildir for feed exists
         try:

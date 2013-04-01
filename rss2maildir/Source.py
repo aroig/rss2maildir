@@ -83,11 +83,12 @@ class FeedSource(object):
                 else:
                     conn = http.client.HTTPSConnection("%s:%s" %(host, port))
                 conn.request('GET', path, headers=headers)
+                response = conn.getresponse()
+
             except (http.client.HTTPException, socket.error) as e:
                 log.warning('http request failed: %s' % str(e))
                 return None
 
-            response = conn.getresponse()
             if response.status == 200:
                 if urlold != url:
                     log.warning("redirected to '%s'" % url)

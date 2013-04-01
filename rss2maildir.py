@@ -31,7 +31,9 @@ __version__ = "0.1"
 # Main stuff
 #------------------------
 
-usage = """Usage: %prog [options]
+usage = """Usage: %prog [options] [maildirs]
+Fetches all configured maildirs. If some maildir names are passed as arguments,
+only fetches items for them.
   """
 parser = OptionParser(usage=usage)
 

@@ -67,8 +67,16 @@ class Maildir(object):
 
         md = m['maildir']
         md5id = m['md5id']
-        if not md in self.data: self.data[md] = {}
-        self.data[md][md5id] = m
+
+        if not md in self.data:
+            self.data[md] = {}
+
+        if not md5id in self.data[md]:
+            self.data[md][md5id] = m
+
+        else:
+            if m['created'] > self.data[md][md5id]['created']:
+                self.data[md][md5id] = m
 
 
     def filename(self, item):

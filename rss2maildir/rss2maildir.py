@@ -55,6 +55,17 @@ class ThreadException(Exception):
                            ''.join(exception_rep))
 
 
+def dedup(opts, args):
+    cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
+    settings = FeedConfig(cfgdir)
+    logging.basicConfig(level = loglevels[min(2, opts.verbosity)])
+
+    maildir = Maildir(settings['maildir_root'])
+    maildir.dedup(dryrun=opts.dryrun)
+
+
+
+
 # stores exception data from the threads
 exc_info = None
 item_count = 0
@@ -135,7 +146,7 @@ def main(opts, args):
         pool = ThreadPool(num_threads)
         def fetch_feed_closure(f):
             try:
-                fetch_feed(f, maildir)
+                fetch_feed(f, maildir, dryrun=opts.dryrun)
             # store first exception data to be collected in the main thread
             except Exception as e:
                 global exc_info
@@ -157,7 +168,7 @@ def main(opts, args):
 
     print("%d items downloaded" % item_count)
 
-def fetch_feed(feed, maildir):
+def fetch_feed(feed, maildir, dryrun=False):
     count = 0
     global item_count
 
@@ -181,7 +192,8 @@ def fetch_feed(feed, maildir):
 
         count = count + 1
         # deliver item
-        maildir.deliver(item, html=feed.html)
+        if not dryrun:
+            maildir.deliver(item, html=feed.html)
 
     print("fetched items in '%s' [%d]" % (feed.name, count))
     item_count = item_count + count

@@ -23,7 +23,7 @@ import os
 import logging
 from optparse import OptionParser
 
-from rss2maildir.rss2maildir import main
+from rss2maildir.rss2maildir import main, dedup
 __version__ = "0.1"
 
 
@@ -42,6 +42,12 @@ parser = OptionParser(usage=usage)
 parser.add_option("-c", "--conf", action="store", type="string",  default=None, dest="conf",
                   help="Config path.")
 
+parser.add_option("--dedup", action="store_true", default=False, dest="dedup",
+                  help="Remove duplicates")
+
+parser.add_option("--dryrun", action="store_true", default=False, dest="dryrun",
+                  help="Does not actually make changes")
+
 parser.add_option("--version", action="store_true", default=False, dest="version",
                   help="Print the version and exit")
 
@@ -59,6 +65,10 @@ if opts.version:
     sys.exit(0)
 
 try:
+    if opts.dedup:
+        dedup(opts, args)
+        sys.exit(0)
+
     main(opts, args)
 
 except KeyboardInterrupt:

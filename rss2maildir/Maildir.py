@@ -58,6 +58,30 @@ class Maildir(object):
                         if os.path.isfile(p):
                             yield p
 
+    def dedup(self, dryrun=False):
+        data = {}
+        for mp in self.messages():
+            m = self.path2metadata(mp)
+            if not m:
+                log.warning("Can't parse filename: %s" % mp)
+                continue
+            key = '%s:%s:%s' % (m['maildir'], m['md5id'], m['md5sum'])
+            if not key in data:  data[key] = []
+            data[key].append(m)
+
+        count = 0
+        for key, L in data.items():
+            if len(L) > 1:
+                L = sorted(L, key=lambda x: x['created'], reverse=True)
+                m = L[0]
+                print("DUP [%d]:  %s" % (len(L) - 1, m['path']))
+                for mdup in L[1:]:
+                    count += 1
+                    print("  deleting: %s" % mdup['path'])
+                    if not dryrun:
+                        os.remove(mdup['path'])
+
+        print("removed %d duplicates." % count)
 
     def updatepath(self, path):
         m = self.path2metadata(path)

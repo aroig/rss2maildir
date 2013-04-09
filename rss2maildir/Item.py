@@ -173,13 +173,13 @@ class Item(object):
 
         message.set_default_type('text/plain')
 
-        # NOTE: That encode decode thing is a dirty trick to workarround this bug
+        # NOTE: Quoted printable encoder on python 3.3 was affected by this
         # http://bugs.python.org/issue16948
         if html:
-            htmlpart = MIMEText(item.html_content.encode('utf-8').decode('latin1'), 'html')
+            htmlpart = MIMEText(item.html_content, 'html')
             message.attach(htmlpart)
         else:
-            textpart = MIMEText(item.text_content.encode('utf-8').decode('latin1'), 'plain')
+            textpart = MIMEText(item.text_content, 'plain')
             message.attach(textpart)
 
         return message

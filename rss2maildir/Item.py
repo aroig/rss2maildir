@@ -21,6 +21,7 @@
 
 import re
 import os
+import sys
 import socket
 import datetime
 from .HTML2Text import HTML2Text
@@ -53,6 +54,9 @@ class Item(object):
             self.content = feed_item['content'][0]['value']
         else:
             self.content = feed_item.get('description', '')
+
+        # \xa0 is 'unbreakable space'
+        self.content = self.content.replace('\xa0', ' ')
 
         self.id = feed_item.get('id', None)
 

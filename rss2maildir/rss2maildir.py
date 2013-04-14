@@ -168,6 +168,8 @@ def main(opts, args):
 
     print("%d items downloaded" % item_count)
 
+
+
 def fetch_feed(feed, maildir, dryrun=False):
     count = 0
     global item_count

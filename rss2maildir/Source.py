@@ -35,9 +35,7 @@ class FeedSource(object):
     """Fetches feeds directly from the url"""
     def __init__(self):
         # cached url and response and parsed stuff
-        self.url = None
-        self.feed = None
-        self.items = None
+        self.feed = {}
 
 
 #    def _open_url(self, url, headers={}):
@@ -122,32 +120,29 @@ class FeedSource(object):
     def parse_feed(self, url):
         """parses feed, caches the parsed data, and returns the feed details"""
         # if the url is the same, return the cached feed
-        if url != self.url:
-            self.url = url
+        if not url in self.feed:
             response = self._open_url(url)
             if not response: return None
 
             parsed_feed = self._parse_stream(url, response)
             if not parsed_feed: return None
 
-            self.feed = parsed_feed['feed']
-            self.items = parsed_feed['items']
-        return self.feed
+            self.feed[url] = parsed_feed
+        return self.feed[url]['feed']
 
 
     def parse_items(self, url, max_cached=100):
-        """generator that tund over parsed items"""
-        if url != self.url:
+        """generator that runs over parsed items"""
+        if not url in self.feed:
             response = self._open_url(url)
             if not response: return
 
             parsed_feed = self._parse_stream(url, response)
             if not parsed_feed: return
 
-            self.feed = parsed_feed['feed']
-            self.items = parsed_feed['items']
+            self.feed[url] = parsed_feed
 
-        for item in self.items:
+        for item in self.feed[url]['items']:
             yield item
 
 

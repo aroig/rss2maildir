@@ -42,6 +42,9 @@ parser = OptionParser(usage=usage)
 parser.add_option("-c", "--conf", action="store", type="string",  default=None, dest="conf",
                   help="Config path.")
 
+parser.add_option("-l", "--logfile", action="store", type="string",  default=None, dest="logfile",
+                  help="File to log output.")
+
 parser.add_option("--dedup", action="store_true", default=False, dest="dedup",
                   help="Remove duplicates")
 

@@ -55,6 +55,17 @@ class ThreadException(Exception):
                            ''.join(exception_rep))
 
 
+class myLogFormatter(logging.Formatter):
+    def __init__(self):
+        return super(myLogFormatter, self).__init__('%(message)s')
+
+    def format(self, record):
+        if record.levelno == logging.INFO:
+            return record.msg
+        else:
+            return '%s: %s' % (record.levelname, record.msg)
+
+
 def dedup(opts, args):
     cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
     settings = FeedConfig(cfgdir)
@@ -65,7 +76,6 @@ def dedup(opts, args):
 
 
 
-
 # stores exception data from the threads
 exc_info = None
 item_count = 0
@@ -73,7 +83,20 @@ item_count = 0
 def main(opts, args):
     cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
     settings = FeedConfig(cfgdir)
-    logging.basicConfig(level = loglevels[min(2, opts.verbosity)])
+
+    # setup logging to a file
+    logging.basicConfig(level    = logging.INFO,
+                        format   = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        datefmt  = '%Y-%m-%d %H:%M',
+                        filename = opts.logfile,
+                        filemode = 'w')
+
+    # setup logging to console
+    console = logging.StreamHandler()
+
+    console.setLevel(loglevels[min(2, opts.verbosity)])
+    console.setFormatter(myLogFormatter())
+    logging.getLogger('').addHandler(console)
 
     maildir_template = settings['maildir_template']
     maildir = Maildir(settings['maildir_root'])
@@ -153,7 +176,7 @@ def main(opts, args):
                 import sys
                 if not exc_info: exc_info = sys.exc_info()
 
-        print("fetching feeds (%d threads)" % num_threads)
+        log.info("fetching feeds (%d threads)" % num_threads)
         global exc_info
         res = pool.map_async(fetch_feed_closure, feed_list, chunksize=1)
         while not res.ready():
@@ -162,11 +185,11 @@ def main(opts, args):
                 raise ThreadException(exc_info[0], exc_info[1], exc_info[2])
         pool.terminate()
     else:
-        print("fetching feeds (single threaded)")
+        log.info("fetching feeds (single threaded)")
         for feed in feed_list:
             fetch_feed(feed, maildir)
 
-    print("%d items downloaded" % item_count)
+    log.info("%d items downloaded" % item_count)
 
 
 
@@ -197,6 +220,6 @@ def fetch_feed(feed, maildir, dryrun=False):
         if not dryrun:
             maildir.deliver(item, html=feed.html)
 
-    print("fetched items in '%s' [%d]" % (feed.name, count))
+    log.info("fetched items in '%s' [%d]" % (feed.name, count))
     item_count = item_count + count
     return count

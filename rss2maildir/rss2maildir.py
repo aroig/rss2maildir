@@ -84,19 +84,24 @@ def main(opts, args):
     cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
     settings = FeedConfig(cfgdir)
 
-    # setup logging to a file
-    logging.basicConfig(level    = logging.INFO,
-                        format   = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                        datefmt  = '%Y-%m-%d %H:%M',
-                        filename = opts.logfile,
-                        filemode = 'w')
+    # root logger
+    rootlog = logging.getLogger('')
+    rootlog.setLevel(logging.DEBUG)
 
-    # setup logging to console
-    console = logging.StreamHandler()
-
+    # setup logging the console
+    console = logging.StreamHandler(stream=sys.stdout)
     console.setLevel(loglevels[min(2, opts.verbosity)])
     console.setFormatter(myLogFormatter())
-    logging.getLogger('').addHandler(console)
+    rootlog.addHandler(console)
+
+    # setup logging to a logfile
+    if opts.logfile:
+        logfile = logging.FileHandler(opts.logfile, 'w')
+        logfile.setLevel(logging.INFO)
+        logfile.setFormatter(logging.Formatter(fmt = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                                               datefmt = '%Y-%m-%d %H:%M'))
+        rootlog.addHandler(logfile)
+
 
     maildir_template = settings['maildir_template']
     maildir = Maildir(settings['maildir_root'])

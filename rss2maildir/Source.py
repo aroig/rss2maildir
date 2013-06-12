@@ -65,9 +65,12 @@ class FeedSource(object):
         urlold = url
         redirectcount = 0
         while redirectcount < max_redirects:
-            (type_, rest) = urllib.parse.splittype(url)
-            (host, path) = urllib.parse.splithost(rest)
-            (host, port) = urllib.parse.splitport(host)
+            try:
+                (type_, rest) = urllib.parse.splittype(url)
+                (host, path) = urllib.parse.splithost(rest)
+                (host, port) = urllib.parse.splitport(host)
+            except:
+                log.warning("redirect resolution failed: %s" % urlold)
 
             if type_ == "https":
                 if port == None:
@@ -84,7 +87,7 @@ class FeedSource(object):
                 response = conn.getresponse()
 
             except (http.client.HTTPException, socket.error) as e:
-                log.warning('http request failed: %s' % str(e))
+                log.warning('http request failed: %s (%s)' % (str(e), urlold))
                 return None
 
             if response.status == 200:

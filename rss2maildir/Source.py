@@ -103,7 +103,7 @@ class FeedSource(object):
                         url = h[1]
 
             else:
-                log.warning('Received unexpected status: %i %s (%s)' % (response.status, response.reason, urlold))
+                log.warning('http error: %i %s (%s)' % (response.status, response.reason, urlold))
                 return None
 
             redirectcount = redirectcount + 1

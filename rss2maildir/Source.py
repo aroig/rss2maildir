@@ -58,6 +58,7 @@ class FeedSource(object):
     # own HTTP function.
 
     def _open_url(self, url, headers = {}):
+        timeout=20
         max_redirects = 6
         redirect_on_status = (301, 302, 303, 307)
         log = logging.getLogger('GET %s' % url)
@@ -80,9 +81,9 @@ class FeedSource(object):
 
             try:
                 if type_ == "http":
-                    conn = http.client.HTTPConnection("%s:%s" %(host, port))
+                    conn = http.client.HTTPConnection("%s:%s" %(host, port), timeout=timeout)
                 else:
-                    conn = http.client.HTTPSConnection("%s:%s" %(host, port))
+                    conn = http.client.HTTPSConnection("%s:%s" %(host, port), timeout=timeout)
                 conn.request('GET', path, headers=headers)
                 response = conn.getresponse()
 
@@ -102,14 +103,13 @@ class FeedSource(object):
                         url = h[1]
 
             else:
-                log.warning('Received unexpected status: %i %s' % (response.status, response.reason))
+                log.warning('Received unexpected status: %i %s (%s)' % (response.status, response.reason, urlold))
                 return None
 
             redirectcount = redirectcount + 1
 
-        log.warning('Maximum number of redirections reached')
+        log.warning('Maximum number of redirections reached (%s)' % urlold)
         return None
-
 
 
     def _parse_stream(self, url, stream):

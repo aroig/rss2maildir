@@ -79,16 +79,21 @@ class Item(object):
         except Exception as e:
             pass
 
-
         self.previous_message_id = None
-        if self.id:
-            self.message_id = '<%s.%s@rss2maildir>' % (self.feed.maildir, self.id)
-        else:
-            self.message_id = '<%s.%s@rss2maildir>' % (
-                datetime.datetime.now().strftime("%Y%m%d%H%M"),
-                generate_random_string(6))
+        self.message_id = self._message_id()
 
         self.compute_hashes()
+
+
+    def _message_id(self):
+        if self.id:
+            raw = '%s.%s' % (self.feed.maildir, self.id)
+        else:
+            raw = '%s.%s' % (datetime.datetime.now().strftime("%Y%m%d%H%M"),
+                             generate_random_string(6))
+
+        return '<%s@rss2maildir>' % compute_hash(raw)
+
 
 
     def __getitem__(self, key):

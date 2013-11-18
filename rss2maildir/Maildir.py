@@ -50,13 +50,14 @@ class Maildir(object):
     def messages(self):
         for md in os.listdir(self.path):
             p = os.path.join(self.path, md)
-            if os.path.isdir(p):
-                for st in ['cur', 'new']:
-                    p = os.path.join(self.path, md, st)
+            for st in ['cur', 'new']:
+                p = os.path.join(self.path, md, st)
+                if os.path.isdir(p):
                     for ms in os.listdir(p):
                         p = os.path.join(self.path, md, st, ms)
                         if os.path.isfile(p):
                             yield p
+
 
     def dedup(self, dryrun=False):
         data = {}

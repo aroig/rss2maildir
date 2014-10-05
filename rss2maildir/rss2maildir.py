@@ -115,14 +115,7 @@ def main(opts, args):
     if len(args) > 0: filter_feeds = set(args)
     else:             filter_feeds = None
 
-    # TODO: also get user and password from config file
-    # TODO: only authenticate if I need it
-    netrc_file = os.path.expanduser('~/.netrc')
-    try:
-        auth = netrc.netrc(netrc_file).authenticators('google.com')
-        cached_source.authenticate(auth[0], auth[2])
-    except netrc.NetrcParseError as err:
-        log.warning("Can't find authenticate to google reader for cache.")
+    # TODO: Authenticate to a cached source if needed
 
     feed_list = []
     for url in settings.feeds():

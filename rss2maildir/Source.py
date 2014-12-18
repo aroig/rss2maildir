@@ -57,6 +57,7 @@ class FeedSource(object):
     # header "Connection: close". I can't get rid of this, so I use rss2maildir's
     # own HTTP function.
 
+
     def _open_url(self, url, headers = {}):
         timeout=20
         max_redirects = 6
@@ -66,21 +67,25 @@ class FeedSource(object):
         urlold = url
         redirectcount = 0
         while redirectcount < max_redirects:
+
             try:
-                (type_, rest) = urllib.parse.splittype(url)
+                (prot, rest) = urllib.parse.splittype(url)
                 (host, path) = urllib.parse.splithost(rest)
                 (host, port) = urllib.parse.splitport(host)
-            except:
-                log.warning("redirect resolution failed: %s" % urlold)
 
-            if type_ == "https":
+            except Exception as e:
+                log.warning("url parsing failed: %s. %s (%s)" % (str(e), url, urlold))
+                return None
+
+            if prot == "https":
                 if port == None:
                     port = 443
-            elif port == None:
-                port = 80
+            else:
+                if port == None:
+                    port = 80
 
             try:
-                if type_ == "http":
+                if prot == "http":
                     conn = http.client.HTTPConnection("%s:%s" %(host, port), timeout=timeout)
                 else:
                     conn = http.client.HTTPSConnection("%s:%s" %(host, port), timeout=timeout)
@@ -100,7 +105,15 @@ class FeedSource(object):
                 response_headers = response.getheaders()
                 for h in response_headers:
                     if h[0].lower() == "location":
-                        url = h[1]
+                        newurl = h[1]
+
+                        # detect relative paths
+                        if re.match('/.*', newurl): newurl = '%s://%s%s' % (prot, host, path)
+
+                        if url != newurl:
+                            url = newurl
+                        else:
+                            return response
 
             else:
                 log.warning('http error: %i %s (%s)' % (response.status, response.reason, urlold))

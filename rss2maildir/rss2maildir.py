@@ -180,7 +180,7 @@ def prepare_feed_list(settings, maildir, filter_feeds=None, max_items=100):
                         max_cached = max_items)
 
         elif feed_type == 'web':
-            log.warning("Web feed not implemented yet. Skipping")
+            log.warning("Web feed not implemented yet. Skipping feed: %s" % url)
             continue
 
         else:

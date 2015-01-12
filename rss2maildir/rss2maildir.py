@@ -232,8 +232,6 @@ def main(opts, args):
 
     # generate feed list
     feed_list = prepare_feed_list(settings, maildir, filter_feeds=filter_feeds)
-    print(feed_list)
-    sys.exit(1)
 
     global item_count
     item_count = 0

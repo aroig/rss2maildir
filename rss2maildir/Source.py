@@ -31,13 +31,7 @@ import http.client
 log = logging.getLogger('rss2maildir:FeedSource')
 
 
-class FeedSource(object):
-    """Fetches feeds directly from the url"""
-    def __init__(self):
-        # cached url and response and parsed stuff
-        self.feed = {}
-
-
+class RawSource(object):
 #    def _open_url(self, url, headers={}):
 #        headers['User-agent'] = 'Mozilla/5.0'
 #
@@ -123,6 +117,26 @@ class FeedSource(object):
 
         log.warning('Maximum number of redirections reached (%s)' % urlold)
         return None
+
+
+class WebSource(RawSource):
+    """Fetches webs directly from the url"""
+    def __init__(self):
+        # cached url and response and parsed stuff
+        self.webs = {}
+
+
+    def parse_web(self, url):
+        """parses webpage"""
+        pass
+        # TODO
+
+
+class FeedSource(RawSource):
+    """Fetches feeds directly from the url"""
+    def __init__(self):
+        # cached url and response and parsed stuff
+        self.feed = {}
 
 
     def _parse_stream(self, url, stream):

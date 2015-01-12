@@ -118,18 +118,9 @@ class RawSource(object):
         log.warning('Maximum number of redirections reached (%s)' % urlold)
         return None
 
+    def raw_data(url):
+        return self._open_url(url)
 
-class WebSource(RawSource):
-    """Fetches webs directly from the url"""
-    def __init__(self):
-        # cached url and response and parsed stuff
-        self.webs = {}
-
-
-    def parse_web(self, url):
-        """parses webpage"""
-        pass
-        # TODO
 
 
 class FeedSource(RawSource):
@@ -161,7 +152,7 @@ class FeedSource(RawSource):
         return self.feed[url]['feed']
 
 
-    def parse_items(self, url, max_cached=100):
+    def parse_items(self, url):
         """generator that runs over parsed items"""
         if not url in self.feed:
             response = self._open_url(url)
@@ -179,9 +170,10 @@ class FeedSource(RawSource):
 
 class FeedCachedSource(FeedSource):
     """Fetches feeds cached throgh google reader"""
-    def __init__(self):
+    def __init__(self, max_cached=100):
         super().__init__()
         self.auth = None
+        self.max_cached = max_cached
 
 
     def authenticate(self, user, password):
@@ -223,7 +215,7 @@ class FeedCachedSource(FeedSource):
             return it.text
 
 
-    def parse_items(self, url, max_cached=100):
+    def parse_items(self, url):
         """generator that parses over items"""
         headers = {'User-agent': 'Mozilla/5.0'}
         baseurl = "http://www.google.com/reader/atom/feed"
@@ -235,8 +227,8 @@ class FeedCachedSource(FeedSource):
 
         count = 0
         continuation = None
-        while count < max_cached:
-            num = min(max_cached - count, 100)
+        while count < self.max_cached:
+            num = min(self.max_cached - count, 100)
             urlq = urllib.parse.quote(url)
             if continuation: cache_url = '%s/%s?r=n&n=%d&c=%s' % (baseurl, urlq, num, continuation)
             else:            cache_url = '%s/%s?r=n&n=%d' % (baseurl, urlq, num)

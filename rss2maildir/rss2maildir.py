@@ -27,9 +27,9 @@ import urllib
 
 from multiprocessing.pool import ThreadPool
 
-from .Source import FeedCachedSource, FeedSource
+from .Source import FeedCachedSource, FeedSource, RawSource
 from .Maildir import Maildir
-from .Feed import Feed
+from .Feed import RssFeed, WebFeed
 from .Settings import FeedConfig
 
 
@@ -66,22 +66,7 @@ def fetch_feed(feed, maildir, dryrun=False):
     count = 0
     global item_count
 
-    for item in feed.items():
-        link = item.link
-#        print(str(item))
-#        continue
-
-        # apply item filters
-        for item_filter in feed.item_filters:
-            item = item_filter(item)
-            if not item: break
-        if not item:
-            log.warning("filtering out item: %s" % link)
-            continue                   # the item is discarded
-
-        item.compute_hashes()      # need to recompute hashes, as id's may have changed
-
-        # if not new, skip
+    for item in feed.filtered_items():
         if not maildir.new(item): continue
 
         count = count + 1
@@ -123,12 +108,14 @@ def setup_logger(verbosity=0, logfile=None):
 
 
 
-def prepare_feed_list(settings, maildir, filter_feeds=None, max_items=100):
+def prepare_feed_list(settings, maildir, filter_feeds=None):
     feed_list = []
 
     # feed sources. implement the download and parsing machinery
-    cached_source = FeedCachedSource()
-    raw_source = FeedSource()
+    max_cached=int(settings['max_cached'])
+    cached_source = FeedCachedSource(max_cached=max_cached)
+    feed_source = FeedSource()
+    raw_source = RawSource()
 
     # maildir config
     maildir_template = settings['maildir_template']
@@ -136,11 +123,8 @@ def prepare_feed_list(settings, maildir, filter_feeds=None, max_items=100):
     for url in settings.feeds():
 
         # setup feed source
-        if settings.getboolean(url, 'cached'): feed_source = cached_source
-        else:                                  feed_source = raw_source
-
-        # max items
-        max_items=int(settings.get(url, 'max_cached'))
+        if settings.getboolean(url, 'cached'): rss_source = cached_source
+        else:                                  rss_source = feed_source
 
         # get config data
         name = urllib.parse.urlencode((('', url), )).split("=")[1]
@@ -172,22 +156,23 @@ def prepare_feed_list(settings, maildir, filter_feeds=None, max_items=100):
         # load item filters
         item_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'filters')]
 
-        if feed_type == 'feed':
-            feed = Feed(url, name, relative_maildir, feed_source,
-                        keywords = keywords,
-                        item_filters = item_filters,
-                        html = settings.getboolean(url, 'html'),
-                        max_cached = max_items)
+        feed = None
+        if feed_type == 'rss':
+            feed = RssFeed(url, name, relative_maildir, rss_source,
+                           keywords = keywords,
+                           item_filters = item_filters,
+                           html = settings.getboolean(url, 'html'))
 
         elif feed_type == 'web':
-            log.warning("Web feed not implemented yet. Skipping feed: %s" % url)
-            continue
+            feed = WebFeed(url, name, relative_maildir, raw_source,
+                           keywords = keywords,
+                           item_filters = item_filters,
+                           html = settings.getboolean(url, 'html'))
 
         else:
             log.warning("Unrecognized feed type '%s'. url: %s" % (feed_type, url))
-            continue
 
-        feed_list.append(feed)
+        if feed: feed_list.append(feed)
 
     return feed_list
 

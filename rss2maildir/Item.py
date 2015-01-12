@@ -38,52 +38,18 @@ import html.entities
 # Default encoding mode set to Quoted Printable.
 charset.add_charset('utf-8', charset.QP, charset.QP)
 
-class Item(object):
+class ItemBase(object):
     def __init__(self, feed, feed_item):
-        self.feed = feed
-
-        self.author = feed_item.get('author', None)
-        self.title = feed_item.get('title', None)
-        self.link = feed_item.get('link', None)
-        self.keywords = set(self.feed.keywords)
-
-        # get rid of newlines in the title
-        if self.title: self.title = re.sub('\s', ' ', self.title.strip())
-
-        if feed_item.has_key('content'):
-            self.content = feed_item['content'][0]['value']
-        else:
-            self.content = feed_item.get('description', '')
-
-        # \xa0 is 'unbreakable space'
-        self.content = self.content.replace('\xa0', ' ')
-
-        self.id = feed_item.get('id', None)
-
-        tags = feed_item.get('tags', [])
-        self.categories = set([c['term'].strip() for c in tags if c['term']])
-
-        self.createddate = self.feed.updateddate
-        try:
-            self.createddate = datetime.datetime(*(feed_item['created_parsed'][0:6]))
-        except Exception as e:
-            pass
-
-        try:
-            self.createddate = datetime.datetime(*(feed_item['published_parsed'][0:6]))
-        except Exception as e:
-            pass
-
-        try:
-            self.createddate = datetime.datetime(*(feed_item['updated_parsed'][0:6]))
-        except Exception as e:
-            pass
-
+        self.feed = None
+        self.author = None
+        self.title = None
+        self.link = None
+        self.keywords = set()
+        self.content = ''
+        self.id = None
+        self.categories = set()
+        self.createddate = None
         self.previous_message_id = None
-        self.message_id = self._message_id()
-
-        self.compute_hashes()
-
 
     def _message_id(self):
         if self.id:
@@ -94,11 +60,8 @@ class Item(object):
 
         return '<%s@rss2maildir>' % compute_hash(raw)
 
-
-
     def __getitem__(self, key):
         return getattr(self, key)
-
 
     def __str__(self):
         ret = ""
@@ -111,15 +74,12 @@ class Item(object):
         ret = ret + "Content:\n%s\n" % self.content
         return ret
 
-
     def compute_hashes(self):
         self.md5sum = compute_hash(self.content)
 
         if self.id:      self.md5id = compute_hash(self.id.strip())
         elif self.title: self.md5id = compute_hash(self.title.strip())
         else:            self.md5id = None
-
-
 
     def unescape_utf8_xml(self, text):
         def fixup(m):
@@ -142,7 +102,6 @@ class Item(object):
             return txt # leave as is
 
         return re.sub("&#?[a-zA-Z0-9_]+;", fixup, text, flags=re.UNICODE)
-
 
     def create_message(self, html = True):
         item = self
@@ -190,12 +149,87 @@ class Item(object):
         return message
 
 
+
+class RssItem(ItemBase):
+
+    def __init__(self, feed, feed_item):
+        self.feed = feed
+
+        self.author = feed_item.get('author', None)
+        self.title = feed_item.get('title', None)
+        self.link = feed_item.get('link', None)
+        self.keywords = set(self.feed.keywords)
+
+        # get rid of newlines in the title
+        if self.title: self.title = re.sub('\s', ' ', self.title.strip())
+
+        if feed_item.has_key('content'):
+            self.content = feed_item['content'][0]['value']
+        else:
+            self.content = feed_item.get('description', '')
+
+        # \xa0 is 'unbreakable space'
+        self.content = self.content.replace('\xa0', ' ')
+
+        self.id = feed_item.get('id', None)
+
+        tags = feed_item.get('tags', [])
+        self.categories = set([c['term'].strip() for c in tags if c['term']])
+
+        self.createddate = self.feed.updateddate
+        try:
+            self.createddate = datetime.datetime(*(feed_item['created_parsed'][0:6]))
+        except Exception as e:
+            pass
+
+        try:
+            self.createddate = datetime.datetime(*(feed_item['published_parsed'][0:6]))
+        except Exception as e:
+            pass
+
+        try:
+            self.createddate = datetime.datetime(*(feed_item['updated_parsed'][0:6]))
+        except Exception as e:
+            pass
+
+        self.previous_message_id = None
+        self.message_id = self._message_id()
+        self.compute_hashes()
+
     @property
     def text_content(self):
         textparser = HTML2Text()
         textparser.feed(self.content)
         return textparser.gettext()
 
+    @property
+    def html_content(self):
+        return self.content
+
+
+
+class WebItem(ItemBase):
+
+    def __init__(self, feed, feed_item):
+        self.feed = feed
+
+        self.author = feed.name
+        self.title = "Web Update: %s" % feed.name
+        self.link = feed.url
+        self.keywords = set(self.feed.keywords)
+
+        self.content = feed_item['content']
+        self.id = feed_item['id']
+        self.categories = set()
+        self.createddate = self.feed.updateddate
+
+        self.previous_message_id = None
+        self.message_id = self._message_id()
+        self.compute_hashes()
+
+    @property
+    def text_content(self):
+        return self.content
 
     @property
     def html_content(self):

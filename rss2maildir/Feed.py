@@ -23,13 +23,14 @@ import logging
 import feedparser
 import datetime
 
-from .Item import Item
+from .Item import RssItem, WebItem
 from .utils import generate_random_string
 
 log = logging.getLogger('rss2maildir:Feed')
 
-class Feed(object):
-    def __init__(self, url, name, maildir, source, keywords=[], item_filters=[], html=True, max_cached=100):
+
+class FeedBase(object):
+    def __init__(self, url, name, maildir, source, keywords=[], item_filters=[], html=True):
         self.url = url
         self.name = name.strip()
         self.keywords = set(keywords)
@@ -38,8 +39,13 @@ class Feed(object):
         self.maildir = maildir.strip()
         self.source = source
         self.updateddate = None
-        self.max_cached = max_cached
 
+    def _get_updateddate(self, parsed_feed):
+        self.updateddate = datetime.datetime.now()
+
+
+
+class RssFeed(FeedBase):
     def _get_updateddate(self, parsed_feed):
         self.updateddate = datetime.datetime.now()
         try:
@@ -52,7 +58,6 @@ class Feed(object):
         except Exception as e:
             pass
 
-
     def items(self):
         parsed_feed = self.source.parse_feed(self.url)
         if not parsed_feed: return
@@ -61,8 +66,56 @@ class Feed(object):
         self._get_updateddate(parsed_feed)
 
         count = 0
-        for feed_item in self.source.parse_items(self.url, self.max_cached):
-            yield Item(self, feed_item)
+        for feed_item in self.source.parse_items(self.url):
+            item = RssItem(self, feed_item)
+            yield item
             count += 1
 
         if count == 0: log.warning("empty parsed feed: %s" % self.url)
+
+    def filtered_items(self):
+        for item in self.items():
+            link = item.link
+
+            # apply item filters
+            for item_filter in self.item_filters:
+                item = item_filter(item)
+                if not item: break
+
+            if not item:
+                log.warning("filtering out item: %s" % link)
+
+            else:
+                item.compute_hashes()      # need to recompute hashes, as id's may have changed
+                yield item
+
+
+
+class WebFeed(FeedBase):
+
+    # TODO:
+    # 1. get raw data
+    # 2. make diff with cache
+    # 3. generate item
+    # 4. update cache
+
+
+    def items(self):
+        return
+        raw = self.source.raw_data(self.url)
+
+        # TODO: compute diff
+        diff = None
+
+        if diff:
+            content= "blah"
+            id = "blah"
+            item = WebItem(self, {'content': content, 'id': id})
+            yield item
+
+        else:
+            return
+
+    def filtered_items(self):
+        for item in self.items():
+            yield item

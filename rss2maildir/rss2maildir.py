@@ -154,6 +154,9 @@ def prepare_feed_list(settings, maildir, filter_feeds=None, max_items=100):
         # get list of keywords
         keywords = sorted(settings.getlist(url, 'keywords'))
 
+        # get type
+        feed_type = settings.get(url, 'type')
+
         # filter feeds if passed arguments
         if filter_feeds and not relative_maildir in filter_feeds:
             continue
@@ -164,15 +167,25 @@ def prepare_feed_list(settings, maildir, filter_feeds=None, max_items=100):
         except OSError as e:
             log.warning('Could not create maildir %s: %s' % (relative_maildir, str(e)))
             log.warning('Skipping feed %s' % url)
+            continue
 
         # load item filters
         item_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'filters')]
 
-        feed = Feed(url, name, relative_maildir, feed_source,
-                    keywords = keywords,
-                    item_filters = item_filters,
-                    html = settings.getboolean(url, 'html'),
-                    max_cached = max_items)
+        if feed_type == 'feed':
+            feed = Feed(url, name, relative_maildir, feed_source,
+                        keywords = keywords,
+                        item_filters = item_filters,
+                        html = settings.getboolean(url, 'html'),
+                        max_cached = max_items)
+
+        elif feed_type == 'web':
+            log.warning("Web feed not implemented yet. Skipping")
+            continue
+
+        else:
+            log.warning("Unrecognized feed type '%s'. url: %s" % (feed_type, url))
+            continue
 
         feed_list.append(feed)
 

@@ -17,29 +17,33 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import re
 from configparser import SafeConfigParser
 import imp
 
 
-class FeedConfig(SafeConfigParser):
+class FeedConfig(object):
+
+    SECTION_TYPES = ['rss', 'web']
+
     def __init__(self, cfgdir):
-        self.cfg_path = os.path.join(cfgdir, 'rss2maildir.conf')
-        self.filters_path = os.path.join(cfgdir, 'filters.py')
-
-        super(FeedConfig, self).__init__()
-        self.read([os.path.expanduser(self.cfg_path)])
-
-        self.filters = self._load_filters()
-
         self.common_section_name = 'common'
         self.general_section_name = 'general'
 
-    def _load_filters(self):
+        cfg_path = os.path.expanduser(os.path.join(cfgdir, 'rss2maildir.conf'))
+        self.conf = SafeConfigParser()
+        self.conf.read([cfg_path])
+
+        filters_path = os.path.join(cfgdir, 'filters.py')
+        self.filters = self._load_filters(filters_path)
+
+
+    def _load_filters(self, path):
         try:
-            fd = open(self.filters_path, 'r')
+            fd = open(path, 'r')
             rawcode = fd.read()
         except:
-            raise Exception("Can't open filters at %s" % self.filters_path)
+            raise Exception("Can't open filters at %s" % path)
             return
 
         try:
@@ -47,38 +51,85 @@ class FeedConfig(SafeConfigParser):
             exec(rawcode, filters.__dict__)
             return filters
         except Exception as err:
-            raise Exception("Exception loading filters %s\n%s" % (self.filters_path, str(err)))
+            raise Exception("Exception loading filters %s\n%s" % (path, str(err)))
 
-    def get(self, section, key, *args, **kwargs):
+
+    def _guess_section(self, url):
+        section = None
+        for typ in self.SECTION_TYPES:
+            section = '%s %s' % (typ, url)
+            if section in self.conf.sections():
+                return (typ, section)
+
+        raise KeyError("Can't find section for url %s" % url)
+
+
+    def has_option(self, url, key, *args, **kwargs):
+        typ, section = self._guess_section(url)
+
+        # we handle type as a config key
+        if key == 'type': return True
+
         for location in (section, self.common_section_name):
-            if self.has_option(location, key):
-                return SafeConfigParser.get(self, location, key, *args, **kwargs)
+            if self.conf.has_option(location, key):
+                return True
+
+        return False
+
+
+    def get(self, url, key, *args, **kwargs):
+        typ, section = self._guess_section(url)
+
+        # we handle type as a config key
+        if key == 'type': return typ
+
+        for location in (section, self.common_section_name):
+            if self.conf.has_option(location, key):
+                return self.conf.get(location, key, *args, **kwargs)
 
         raise KeyError('Neither section %s nor %s contained the option %s' %
                        (section, self.common_section_name, key))
 
-    def getlist(self, section, key, *args, **kwargs):
-        if self.has_option('common', key):
-            value = [k.strip() for k in self.get('common', key, *args, **kwargs).split(',')]
-        else:
-            value = []
 
-        if self.has_option(section, key):
-            newvalue = [k.strip() for k in self.get(section, key, *args, **kwargs).split(',')]
-        else:
-            newvalue = []
 
-        return value + newvalue
+    def getlist(self, url, key, *args, **kwargs):
+        typ, section = self._guess_section(url)
+
+        value = []
+        for location in (self.common_section_name, section):
+            if self.conf.has_option(location, key):
+                raw = self.conf.get(location, key, *args, **kwargs)
+                value = value + [k.strip() for k in raw.split(',') if len(k.strip()) > 0]
+
+        return value
+
+
+    def getboolean(self, url, key, *args, **kwargs):
+        typ, section = self._guess_section(url)
+
+        for location in (section, self.common_section_name):
+            if self.conf.has_option(location, key):
+                return self.conf.getboolean(location, key, *args, **kwargs)
+
+        raise KeyError('Neither section %s nor %s contained the option %s' %
+                       (section, self.common_section_name, key))
+
+
 
     def __contains__(self, key):
-        return self.has_option(self.general_section_name, key)
+        return self.conf.has_option(self.general_section_name, key)
+
 
     def __getitem__(self, key):
-        return SafeConfigParser.get(self, self.general_section_name, key)
+        return self.conf.get(self.general_section_name, key)
+
 
     def __setitem__(self, key, value):
-        self.set(self.general_section_name, key, value)
+        self.conf.set(self.general_section_name, key, value)
+
 
     def feeds(self):
-        return (section for section in self.sections()
-                if section not in (self.general_section_name, self.common_section_name))
+        for section in self.conf.sections():
+            for typ in self.SECTION_TYPES:
+                m = re.match('%s (.*)' % typ, section)
+                if m: yield m.group(1)

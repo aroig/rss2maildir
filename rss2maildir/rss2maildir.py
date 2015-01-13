@@ -75,6 +75,10 @@ def fetch_feed(feed, maildir, dryrun=False):
         if not dryrun:
             maildir.deliver(item, html=feed.html)
 
+    # signal the feed everythin is comitted, so it can update webcache, etc.
+    if not dryrun:
+        feed.signal_received()
+
     log.info("fetched items in '%s' [%d]" % (feed.name, count))
     item_count = item_count + count
     return count
@@ -159,6 +163,8 @@ def prepare_feed_list(settings, maildir, filter_feeds=None):
 
         # load item filters
         item_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'filters')]
+        web_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'web_filters')]
+
 
         feed_conf = {
             'url': url,
@@ -166,6 +172,7 @@ def prepare_feed_list(settings, maildir, filter_feeds=None):
             'maildir': relative_maildir,
             'keywords': keywords,
             'item_filters': item_filters,
+            'web_filters': web_filters,
             'html': settings.getboolean(url, 'html'),
         }
 
@@ -220,12 +227,11 @@ def main(opts, args):
 
     # TODO: Authenticate to a cached source if needed
 
-    # root maildir
+    # Load root maildir. This loads data for all contained messages and cleand tmp subdirs.
     maildir = Maildir(settings['maildir_root'])
 
     # generate feed list
     feed_list = prepare_feed_list(settings, maildir, filter_feeds=filter_feeds)
-
     global item_count
     item_count = 0
     if num_threads > 1:

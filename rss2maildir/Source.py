@@ -118,8 +118,10 @@ class RawSource(object):
         log.warning('Maximum number of redirections reached (%s)' % urlold)
         return None
 
-    def raw_data(url):
-        return self._open_url(url)
+    def raw_data(self, url):
+        response = self._open_url(url)
+        if response:
+            return response.read().decode('utf-8')
 
 
 

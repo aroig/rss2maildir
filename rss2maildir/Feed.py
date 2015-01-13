@@ -35,14 +35,12 @@ class FeedBase(object):
         self.name = conf['name'].strip()
         self.keywords = set(conf['keywords'])
         self.item_filters = conf['item_filters']
+        self.web_filters = conf['web_filters']
         self.html = conf['html']
         self.maildir = conf['maildir'].strip()
 
         self.source = source
         self.updateddate = None
-
-    def _get_updateddate(self, parsed_feed):
-        self.updateddate = datetime.datetime.now()
 
     def apply_filters(self, item):
         for item_filter in self.item_filters:
@@ -53,6 +51,16 @@ class FeedBase(object):
             item.compute_hashes()
 
         return item
+
+    def apply_web_filters(self, content):
+        for web_filter in self.web_filters:
+            content = web_filter(content)
+            if not content: break
+
+        return content
+
+    def signal_received(self):
+        pass
 
 
 
@@ -104,29 +112,31 @@ class WebFeed(FeedBase):
         super(WebFeed, self).__init__(conf, source)
         self.cache = cache
 
-    # TODO:
-    # 1. get raw data
-    # 2. make diff with cache
-    # 3. generate item
-    # 4. update cache
+        self.updateddate = datetime.datetime.now()
 
+        # this feed's content are plain text diffs
+        self.html = False
 
     def items(self):
-        return
         raw = self.source.raw_data(self.url)
 
-        # TODO: compute diff
-        diff = None
+        # build an item to apply filters, and remember the filtered content
+        self.content = self.apply_web_filters(raw)
 
-        if diff:
-            content= "blah"
-            id = "blah"
-            item = WebItem(self, {'content': content, 'id': id})
-            yield item
-
-        else:
-            return
+        # now compute the diff
+        diff = self.cache.get_diff(self.url, self.content)
+        if len(diff) > 0:
+            item = WebItem(self, content=diff)
+            item = self.apply_filters(item)
+            link = item.link
+            if not item:
+                log.warning("filtering out item: %s" % link)
+            else:
+                yield item
 
     def filtered_items(self):
         for item in self.items():
             yield item
+
+    def signal_received(self):
+        self.cache.update(self.url, self.content)

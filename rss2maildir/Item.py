@@ -210,18 +210,18 @@ class RssItem(ItemBase):
 
 class WebItem(ItemBase):
 
-    def __init__(self, feed, feed_item):
+    def __init__(self, feed, content):
         self.feed = feed
 
-        self.author = feed.name
+        self.author = None
         self.title = "Web Update: %s" % feed.name
         self.link = feed.url
         self.keywords = set(self.feed.keywords)
 
-        self.content = feed_item['content']
-        self.id = feed_item['id']
+        self.content = content
         self.categories = set()
         self.createddate = self.feed.updateddate
+        self.id = compute_hash('%s\n%s' % (self.createddate.strftime("%Y%m%d%H%M"), self.content))
 
         self.previous_message_id = None
         self.message_id = self._message_id()

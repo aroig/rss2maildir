@@ -18,15 +18,15 @@
 
 import os
 import difflib
+import hashlib
 
-from .utils import compute_hash
 
 class Webcache(object):
     def __init__(self, path):
         self.path = os.path.realpath(os.path.expanduser(path))
 
     def _hash(self, url):
-        return compute_hash(url)
+        return hashlib.sha1(url.encode('utf-8')).hexdigest()
 
     def update(self, url, content):
         md5 = self._hash(url)

@@ -118,6 +118,9 @@ def prepare_feed_list(settings, maildir, filter_feeds=None):
     feed_source = FeedSource()
     raw_source = RawSource()
 
+    # web cache
+    web_cache = Webcache(settings['web_cache'])
+
     # maildir config
     maildir_template = settings['maildir_template']
 
@@ -157,18 +160,22 @@ def prepare_feed_list(settings, maildir, filter_feeds=None):
         # load item filters
         item_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'filters')]
 
+        feed_conf = {
+            'url': url,
+            'name': name,
+            'maildir': relative_maildir,
+            'keywords': keywords,
+            'item_filters': item_filters,
+            'html': settings.getboolean(url, 'html'),
+        }
+
         feed = None
+
         if feed_type == 'rss':
-            feed = RssFeed(url, name, relative_maildir, rss_source,
-                           keywords = keywords,
-                           item_filters = item_filters,
-                           html = settings.getboolean(url, 'html'))
+            feed = RssFeed(conf=feed_conf, source=rss_source)
 
         elif feed_type == 'web':
-            feed = WebFeed(url, name, relative_maildir, raw_source,
-                           keywords = keywords,
-                           item_filters = item_filters,
-                           html = settings.getboolean(url, 'html'))
+            feed = WebFeed(conf=feed_conf, source=raw_source, cache=web_cache)
 
         else:
             log.warning("Unrecognized feed type '%s'. url: %s" % (feed_type, url))
@@ -215,7 +222,6 @@ def main(opts, args):
 
     # root maildir
     maildir = Maildir(settings['maildir_root'])
-    webcache = Webcache(settings['web_cache'])
 
     # generate feed list
     feed_list = prepare_feed_list(settings, maildir, filter_feeds=filter_feeds)

@@ -30,22 +30,36 @@ log = logging.getLogger('rss2maildir:Feed')
 
 
 class FeedBase(object):
-    def __init__(self, url, name, maildir, source, keywords=[], item_filters=[], html=True):
-        self.url = url
-        self.name = name.strip()
-        self.keywords = set(keywords)
-        self.item_filters = item_filters
-        self.html = html
-        self.maildir = maildir.strip()
+    def __init__(self, conf, source):
+        self.url = conf['url']
+        self.name = conf['name'].strip()
+        self.keywords = set(conf['keywords'])
+        self.item_filters = conf['item_filters']
+        self.html = conf['html']
+        self.maildir = conf['maildir'].strip()
+
         self.source = source
         self.updateddate = None
 
     def _get_updateddate(self, parsed_feed):
         self.updateddate = datetime.datetime.now()
 
+    def apply_filters(self, item):
+        for item_filter in self.item_filters:
+            item = item_filter(item)
+            if not item: break
+
+        if item:
+            item.compute_hashes()
+
+        return item
+
 
 
 class RssFeed(FeedBase):
+    def __init__(self, conf, source):
+        super(RssFeed, self).__init__(conf, source)
+
     def _get_updateddate(self, parsed_feed):
         self.updateddate = datetime.datetime.now()
         try:
@@ -77,21 +91,18 @@ class RssFeed(FeedBase):
         for item in self.items():
             link = item.link
 
-            # apply item filters
-            for item_filter in self.item_filters:
-                item = item_filter(item)
-                if not item: break
-
+            item = self.apply_filters(item)
             if not item:
                 log.warning("filtering out item: %s" % link)
-
             else:
-                item.compute_hashes()      # need to recompute hashes, as id's may have changed
                 yield item
 
 
 
 class WebFeed(FeedBase):
+    def __init__(self, conf, source, cache):
+        super(WebFeed, self).__init__(conf, source)
+        self.cache = cache
 
     # TODO:
     # 1. get raw data

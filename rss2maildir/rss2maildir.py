@@ -29,6 +29,7 @@ from multiprocessing.pool import ThreadPool
 
 from .Source import FeedCachedSource, FeedSource, RawSource
 from .Maildir import Maildir
+from .Webcache import Webcache
 from .Feed import RssFeed, WebFeed
 from .Settings import FeedConfig
 
@@ -214,6 +215,7 @@ def main(opts, args):
 
     # root maildir
     maildir = Maildir(settings['maildir_root'])
+    webcache = Webcache(settings['web_cache'])
 
     # generate feed list
     feed_list = prepare_feed_list(settings, maildir, filter_feeds=filter_feeds)

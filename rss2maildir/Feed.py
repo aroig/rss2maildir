@@ -22,6 +22,7 @@
 import logging
 import feedparser
 import datetime
+import difflib
 
 from .Item import RssItem, WebItem
 from .utils import generate_random_string
@@ -124,7 +125,12 @@ class WebFeed(FeedBase):
         self.content = self.apply_web_filters(raw)
 
         # now compute the diff
-        diff = self.cache.get_diff(self.url, self.content)
+        content_old = self.cache.get(self.url)
+        content_new = self.content
+        diff_lines = difflib.unified_diff(content_old.splitlines(keepends=True),
+                                          self.content.splitlines(keepends=True))
+        diff = ''.join(diff_lines)
+
         if len(diff) > 0:
             item = WebItem(self, content=diff)
             item = self.apply_filters(item)

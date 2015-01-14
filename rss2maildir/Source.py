@@ -121,7 +121,9 @@ class RawSource(object):
     def raw_data(self, url):
         response = self._open_url(url)
         if response:
-            return response.read().decode('utf-8')
+            data = response.read().decode('utf-8')
+            data = data.replace("\r\n", "\n")
+            return data
 
 
 

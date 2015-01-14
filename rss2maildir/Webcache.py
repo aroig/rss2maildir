@@ -17,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import difflib
 import hashlib
 
 
@@ -46,9 +45,3 @@ class Webcache(object):
             data = ''
 
         return data
-
-    def get_diff(self, url, content):
-        content_old = self.get(url)
-        diff = difflib.unified_diff(content_old.splitlines(keepends=True),
-                                    content.splitlines(keepends=True))
-        return ''.join(diff)

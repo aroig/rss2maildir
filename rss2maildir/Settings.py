@@ -19,7 +19,8 @@
 import os
 import re
 from configparser import SafeConfigParser
-import imp
+
+import importlib.machinery
 
 
 class FeedConfig(object):
@@ -39,17 +40,12 @@ class FeedConfig(object):
 
 
     def _load_filters(self, path):
-        try:
-            fd = open(path, 'r')
-            rawcode = fd.read()
-        except:
-            raise Exception("Can't open filters at %s" % path)
-            return
 
         try:
-            filters = imp.new_module('filters')
-            exec(rawcode, filters.__dict__)
-            return filters
+            loader = importlib.machinery.SourceFileLoader("filters", path)
+            module = loader.load_module("filters")
+            return module
+
         except Exception as err:
             raise Exception("Exception loading filters %s\n%s" % (path, str(err)))
 

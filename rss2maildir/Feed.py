@@ -123,6 +123,7 @@ class WebFeed(FeedBase):
 
         # build an item to apply filters, and remember the filtered content
         self.content = self.apply_web_filters(raw)
+        if not self.content: return
 
         # now compute the diff
         content_old = self.cache.get(self.url)
@@ -145,4 +146,5 @@ class WebFeed(FeedBase):
             yield item
 
     def signal_received(self):
-        self.cache.update(self.url, self.content)
+        if self.content:
+            self.cache.update(self.url, self.content)

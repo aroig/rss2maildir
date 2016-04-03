@@ -31,13 +31,7 @@ import http.client
 log = logging.getLogger('rss2maildir:FeedSource')
 
 
-class FeedSource(object):
-    """Fetches feeds directly from the url"""
-    def __init__(self):
-        # cached url and response and parsed stuff
-        self.feed = {}
-
-
+class RawSource(object):
 #    def _open_url(self, url, headers={}):
 #        headers['User-agent'] = 'Mozilla/5.0'
 #
@@ -124,6 +118,21 @@ class FeedSource(object):
         log.warning('Maximum number of redirections reached (%s)' % urlold)
         return None
 
+    def raw_data(self, url):
+        response = self._open_url(url)
+        if response:
+            data = response.read().decode('utf-8')
+            data = data.replace("\r\n", "\n")
+            return data
+
+
+
+class FeedSource(RawSource):
+    """Fetches feeds directly from the url"""
+    def __init__(self):
+        # cached url and response and parsed stuff
+        self.feed = {}
+
 
     def _parse_stream(self, url, stream):
         try:
@@ -147,7 +156,7 @@ class FeedSource(object):
         return self.feed[url]['feed']
 
 
-    def parse_items(self, url, max_cached=100):
+    def parse_items(self, url):
         """generator that runs over parsed items"""
         if not url in self.feed:
             response = self._open_url(url)
@@ -165,9 +174,10 @@ class FeedSource(object):
 
 class FeedCachedSource(FeedSource):
     """Fetches feeds cached throgh google reader"""
-    def __init__(self):
+    def __init__(self, max_cached=100):
         super().__init__()
         self.auth = None
+        self.max_cached = max_cached
 
 
     def authenticate(self, user, password):
@@ -209,7 +219,7 @@ class FeedCachedSource(FeedSource):
             return it.text
 
 
-    def parse_items(self, url, max_cached=100):
+    def parse_items(self, url):
         """generator that parses over items"""
         headers = {'User-agent': 'Mozilla/5.0'}
         baseurl = "http://www.google.com/reader/atom/feed"
@@ -221,8 +231,8 @@ class FeedCachedSource(FeedSource):
 
         count = 0
         continuation = None
-        while count < max_cached:
-            num = min(max_cached - count, 100)
+        while count < self.max_cached:
+            num = min(self.max_cached - count, 100)
             urlq = urllib.parse.quote(url)
             if continuation: cache_url = '%s/%s?r=n&n=%d&c=%s' % (baseurl, urlq, num, continuation)
             else:            cache_url = '%s/%s?r=n&n=%d' % (baseurl, urlq, num)

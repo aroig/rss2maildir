@@ -18,28 +18,23 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import urllib
 import logging
-import imp
 import sys
 import traceback
 import netrc
+import urllib
 
 from multiprocessing.pool import ThreadPool
 
+from .Source import FeedCachedSource, FeedSource, RawSource
 from .Maildir import Maildir
-from .Feed import Feed
-from .Source import FeedCachedSource, FeedSource
+from .Webcache import Webcache
+from .Feed import RssFeed, WebFeed
 from .Settings import FeedConfig
 
 
 log = logging.getLogger('rss2maildir')
 
-loglevels = {
-    0: logging.WARNING,
-    1: logging.INFO,
-    2: logging.DEBUG,
-}
 
 
 class ThreadException(Exception):
@@ -66,23 +61,35 @@ class myLogFormatter(logging.Formatter):
             return '%s: %s' % (record.levelname, record.msg)
 
 
-def dedup(opts, args):
-    cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
-    settings = FeedConfig(cfgdir)
-    logging.basicConfig(level = loglevels[min(2, opts.verbosity)])
 
-    maildir = Maildir(settings['maildir_root'])
-    maildir.dedup(dryrun=opts.dryrun)
+def fetch_feed(feed, maildir, dryrun=False):
+    count = 0
+    global item_count
+
+    for item in feed.filtered_items():
+        if not maildir.new(item): continue
+
+        count = count + 1
+        # deliver item
+        if not dryrun:
+            maildir.deliver(item, html=feed.html)
+
+    # signal the feed everythin is comitted, so it can update webcache, etc.
+    if not dryrun:
+        feed.signal_received()
+
+    log.info("fetched items in '%s' [%d]" % (feed.name, count))
+    item_count = item_count + count
+    return count
 
 
 
-# stores exception data from the threads
-exc_info = None
-item_count = 0
-
-def main(opts, args):
-    cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
-    settings = FeedConfig(cfgdir)
+def setup_logger(verbosity=0, logfile=None):
+    loglevels = {
+        0: logging.WARNING,
+        1: logging.INFO,
+        2: logging.DEBUG,
+    }
 
     # root logger
     rootlog = logging.getLogger('')
@@ -90,42 +97,41 @@ def main(opts, args):
 
     # setup logging the console
     console = logging.StreamHandler(stream=sys.stdout)
-    console.setLevel(loglevels[min(2, opts.verbosity)])
+    console.setLevel(loglevels[min(2, verbosity)])
     console.setFormatter(myLogFormatter())
     rootlog.addHandler(console)
 
     # setup logging to a logfile
-    if opts.logfile:
-        logfile = logging.FileHandler(opts.logfile, 'w')
-        logfile.setLevel(logging.INFO)
-        logfile.setFormatter(logging.Formatter(fmt = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                                               datefmt = '%Y-%m-%d %H:%M'))
-        rootlog.addHandler(logfile)
+    if logfile:
+        filelogger = logging.FileHandler(logfile, 'w')
+        filelogger.setLevel(logging.INFO)
+        filelogger.setFormatter(
+            logging.Formatter(fmt = '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                              datefmt = '%Y-%m-%d %H:%M'))
+        rootlog.addHandler(filelogger)
 
 
-    maildir_template = settings['maildir_template']
-    maildir = Maildir(settings['maildir_root'])
 
-    num_threads = int(settings['threads'])
+def prepare_feed_list(settings, maildir, filter_feeds=None):
+    feed_list = []
 
     # feed sources. implement the download and parsing machinery
-    cached_source = FeedCachedSource()
-    raw_source = FeedSource()
+    max_cached=int(settings['max_cached'])
+    cached_source = FeedCachedSource(max_cached=max_cached)
+    feed_source = FeedSource()
+    raw_source = RawSource()
 
-    if len(args) > 0: filter_feeds = set(args)
-    else:             filter_feeds = None
+    # web cache
+    web_cache = Webcache(settings['web_cache'])
 
-    # TODO: Authenticate to a cached source if needed
+    # maildir config
+    maildir_template = settings['maildir_template']
 
-    feed_list = []
     for url in settings.feeds():
 
         # setup feed source
-        if settings.getboolean(url, 'cached'): feed_source = cached_source
-        else:                                  feed_source = raw_source
-
-        # max number of cached items to retrieve
-        max_cached = int(settings.get(url, 'max_cached'))
+        if settings.getboolean(url, 'cached'): rss_source = cached_source
+        else:                                  rss_source = feed_source
 
         # get config data
         name = urllib.parse.urlencode((('', url), )).split("=")[1]
@@ -139,6 +145,9 @@ def main(opts, args):
         # get list of keywords
         keywords = sorted(settings.getlist(url, 'keywords'))
 
+        # get type
+        feed_type = settings.get(url, 'type')
+
         # filter feeds if passed arguments
         if filter_feeds and not relative_maildir in filter_feeds:
             continue
@@ -149,18 +158,79 @@ def main(opts, args):
         except OSError as e:
             log.warning('Could not create maildir %s: %s' % (relative_maildir, str(e)))
             log.warning('Skipping feed %s' % url)
+            continue
 
         # load item filters
         item_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'filters')]
+        web_filters = [getattr(settings.filters, ft) for ft in settings.getlist(url, 'web_filters')]
 
-        feed = Feed(url, name, relative_maildir, feed_source,
-                    keywords = keywords,
-                    item_filters = item_filters,
-                    html = settings.getboolean(url, 'html'),
-                    max_cached = max_cached)
 
-        feed_list.append(feed)
+        feed_conf = {
+            'url': url,
+            'name': name,
+            'maildir': relative_maildir,
+            'keywords': keywords,
+            'item_filters': item_filters,
+            'web_filters': web_filters,
+            'html': settings.getboolean(url, 'html'),
+        }
 
+        feed = None
+
+        if feed_type == 'rss':
+            feed = RssFeed(conf=feed_conf, source=rss_source)
+
+        elif feed_type == 'web':
+            feed = WebFeed(conf=feed_conf, source=raw_source, cache=web_cache)
+
+        else:
+            log.warning("Unrecognized feed type '%s'. url: %s" % (feed_type, url))
+
+        if feed: feed_list.append(feed)
+
+    return feed_list
+
+
+
+def dedup(opts, args):
+    cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
+
+    # settings
+    settings = FeedConfig(cfgdir)
+
+    # setup the logging
+    setup_logger(verbosity=opts.verbosity, logfile=opts.logfile)
+
+    maildir = Maildir(settings['maildir_root'])
+    maildir.dedup(dryrun=opts.dryrun)
+
+
+
+# stores exception data from the threads
+exc_info = None
+item_count = 0
+
+def main(opts, args):
+    cfgdir = opts.conf or os.path.realpath(os.path.expanduser('~/.config/rss2maildir'))
+
+    # setup the logging
+    setup_logger(verbosity=opts.verbosity, logfile=opts.logfile)
+
+    # config
+    settings = FeedConfig(cfgdir)
+    num_threads = int(settings['threads'])
+
+    # select specific feeds
+    if len(args) > 0: filter_feeds = set(args)
+    else:             filter_feeds = None
+
+    # TODO: Authenticate to a cached source if needed
+
+    # Load root maildir. This loads data for all contained messages and cleand tmp subdirs.
+    maildir = Maildir(settings['maildir_root'])
+
+    # generate feed list
+    feed_list = prepare_feed_list(settings, maildir, filter_feeds=filter_feeds)
     global item_count
     item_count = 0
     if num_threads > 1:
@@ -188,36 +258,3 @@ def main(opts, args):
             fetch_feed(feed, maildir)
 
     log.info("%d items downloaded" % item_count)
-
-
-
-def fetch_feed(feed, maildir, dryrun=False):
-    count = 0
-    global item_count
-
-    for item in feed.items():
-        link = item.link
-#        print(str(item))
-#        continue
-
-        # apply item filters
-        for item_filter in feed.item_filters:
-            item = item_filter(item)
-            if not item: break
-        if not item:
-            log.warning("filtering out item: %s" % link)
-            continue                   # the item is discarded
-
-        item.compute_hashes()      # need to recompute hashes, as id's may have changed
-
-        # if not new, skip
-        if not maildir.new(item): continue
-
-        count = count + 1
-        # deliver item
-        if not dryrun:
-            maildir.deliver(item, html=feed.html)
-
-    log.info("fetched items in '%s' [%d]" % (feed.name, count))
-    item_count = item_count + count
-    return count

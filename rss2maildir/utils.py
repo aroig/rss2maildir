@@ -24,8 +24,7 @@ import errno
 import random
 import string
 import logging
-
-import hashlib as md5
+import hashlib
 
 
 def mkdir_p(path):
@@ -49,4 +48,4 @@ def generate_random_string(length,
 
 
 def compute_hash(data):
-    return md5.md5(data.encode('utf-8')).hexdigest()
+    return hashlib.md5(data.encode('utf-8')).hexdigest()
